@@ -13,6 +13,72 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# ---------------------------------------------------------
+# STYLING & DESIGN (Nur Optik - keine Funktionalität geändert)
+# ---------------------------------------------------------
+custom_css = """
+<style>
+    /* Haupt-Hintergrund & Textfarbe */
+    .stApp {
+        background: linear-gradient(135deg, #0e1117 0%, #161b22 100%);
+        color: #f0f6fc;
+    }
+    
+    /* Haupt-Überschriften */
+    h1, h2, h3 {
+        color: #58a6ff !important;
+        font-weight: 800 !important;
+    }
+    
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] {
+        background-color: #161b22 !important;
+        border-right: 1px solid #30363d;
+    }
+
+    /* Input Felder (Textinputs, Radiobuttons) */
+    .stTextInput input {
+        background-color: #0d1117 !important;
+        color: #58a6ff !important;
+        border: 1px solid #30363d !important;
+        border-radius: 8px !important;
+    }
+    
+    /* Buttons optisch aufwerten */
+    .stButton > button {
+        background: linear-gradient(90deg, #1f6feb 0%, #238636 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(31,111,235,0.4) !important;
+    }
+
+    /* Spieler-Karten (Container in den Expander-Elementen) */
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: #161b22 !important;
+        border: 1px solid #30363d !important;
+        border-radius: 10px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+    }
+
+    /* Trennlinie & Captions */
+    hr {
+        border-color: #30363d !important;
+    }
+    .stCaption {
+        color: #8b949e !important;
+    }
+</style>
+"""
+st.markdown(custom_css, unsafe_allow_html=True)
+# ---------------------------------------------------------
+
 # 1. Sprache wählen
 lang = st.radio(
     "Language / Sprache:", options=["DE", "EN"], horizontal=True, index=0
