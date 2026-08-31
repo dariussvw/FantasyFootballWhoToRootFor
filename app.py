@@ -85,16 +85,12 @@ labels = {
 
 st.title(labels["title"])
 
-# Optionaler Bereich für ESPN in der Sidebar
-st.sidebar.header("ESPN Integration (Optional)")
+# Optionaler Bereich für öffentliche ESPN-Ligen in der Sidebar
+st.sidebar.header("Öffentliche ESPN Liga (Optional)")
 espn_league_id = st.sidebar.text_input(
-    "ESPN League ID:", value="", help="Leer lassen, wenn nur Sleeper genutzt wird"
+    "ESPN League ID:", value="", help="Nur für öffentliche ESPN-Ligen"
 )
 espn_team_name = st.sidebar.text_input("Dein ESPN Teamname:", value="")
-espn_s2 = st.sidebar.text_input(
-    "ESPN_S2 (nur bei privaten Ligen):", value="", type="password"
-)
-swid = st.sidebar.text_input("SWID (nur bei privaten Ligen):", value="")
 
 # Sleeper Username ermitteln
 query_params = st.query_params
@@ -105,7 +101,7 @@ username = st.text_input(labels["username"], value=initial_username)
 if username:
     st.query_params["user"] = username
 
-# Hier auf "none" gesetzt, damit beim Laden/Neu-Laden standardmäßig alles eingeklappt ist
+# Bei neuem Seitenaufruf standardmäßig alles eingeklappt
 if "expand_mode" not in st.session_state:
     st.session_state.expand_mode = "none"
 
@@ -402,18 +398,12 @@ if username:
                                     f"{l_name} ({pts_str} Pts)"
                                 )
 
-            # 2. ESPN Integration
+            # 2. Öffentliche ESPN Liga
             if espn_league_id and espn_team_name:
                 try:
-                    kwargs = {
-                        "league_id": int(espn_league_id),
-                        "year": int(season),
-                    }
-                    if espn_s2 and swid:
-                        kwargs["espn_s2"] = espn_s2
-                        kwargs["swid"] = swid
-
-                    espn_league = ESPNLeague(**kwargs)
+                    espn_league = ESPNLeague(
+                        league_id=int(espn_league_id), year=int(season)
+                    )
                     espn_league_name = getattr(
                         espn_league.settings, "name", "ESPN League"
                     )
@@ -641,6 +631,7 @@ if username:
                                     f"**{labels['opponent']}:** {opp_l_str}"
                                 )
 
+                # JS für fette schwarze Schrift & Matchup-Einfärbung im Light & Dark Mode
                 js_script = "<script>"
                 for title, (bg, border) in color_map_js.items():
                     escaped_title = title.replace("'", "\\'")
@@ -652,8 +643,8 @@ if username:
                                 el.style.backgroundColor = '{bg}';
                                 el.style.border = '1px solid {border}';
                                 el.style.borderRadius = '8px';
-                                el.style.color = '#000000'; // Erzwingt schwarze Schriftfarbe (auch im Darkmode)
-                                el.style.fontWeight = 'bold'; // Macht das Matchup fettgedruckt
+                                el.style.color = '#000000';
+                                el.style.fontWeight = 'bold';
                             }}
                         }});
                     }} catch(e) {{ console.error(e); }}
