@@ -2,8 +2,12 @@ import streamlit as st
 import requests
 from datetime import datetime
 import zoneinfo
+from streamlit_autorun import autorun  # <-- NEU
 
 st.set_page_config(page_title="Sleeper NFL Game Monitor", layout="wide", initial_sidebar_state="collapsed")
+
+# Aktualisiert die App automatisch alle 30.000 Millisekunden (30 Sekunden)
+autorun(interval=30000)  # <-- NEU
 
 st.title("🏈 Fantasy Football - Who to root for?")
 
