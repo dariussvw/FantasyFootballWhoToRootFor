@@ -5,7 +5,7 @@ import zoneinfo
 
 st.set_page_config(page_title="Sleeper NFL Game Monitor", layout="wide", initial_sidebar_state="collapsed")
 
-st.title("🏈 Sleeper Live NFL Game Monitor")
+st.title("🏈 Fantasy Football - Who to root for?")
 
 # 1. Eingabe
 username = st.text_input("Sleeper Username:", value="")
