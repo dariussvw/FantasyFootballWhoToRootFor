@@ -150,19 +150,22 @@ if username:
                             opp_cnt = len(p["opp_leagues"])
                             netto = my_cnt - opp_cnt
 
-                            # Neue Status-Logik
-                            if netto >= 2:
-                                status = f"🔥 JUBEL (+{netto})"
+                            # Neue Jugendsprache-Skala
+                            if netto >= 3:
+                                status = f"🎆 ABFEUERN (+{netto})"
+                            elif netto == 2:
+                                status = "🔥 JUBEL (+2)"
                             elif netto == 1:
-                                status = "🟢 GUT (+1)"
+                                status = "🟢 GUTE (+1)"
+                            elif netto == 0:
+                                status = "🤷 JUCKA (0)"
                             elif netto == -1:
-                                status = "🔴 SCHLECHT (-1)"
-                            elif netto <= -2:
-                                status = f"💥 KATASTROPHE ({netto})"
-                            else:
-                                status = "⚪ NEUTRAL (0)"
+                                status = "😮‍💨 DAMN (-1)"
+                            elif netto == -2:
+                                status = "💀 FUCK (-2)"
+                            else: # <= -3
+                                status = f"🤬 CRASHOUT ({netto})"
 
-                            # Exakt festgelegte Spaltenreihenfolge
                             table_data.append({
                                 "Spieler": f"{p['name']} ({p['pos']}-{p['team']})",
                                 "Mein Team": ", ".join(p["my_leagues"]) if p["my_leagues"] else "-",
@@ -170,7 +173,7 @@ if username:
                                 "Auswirkung": status
                             })
 
-                        # Spalten explizit sortieren & anzeigen
+                        # Spalten explizit sortieren
                         column_order = ["Spieler", "Mein Team", "Gegner", "Auswirkung"]
                         st.dataframe(
                             table_data, 
