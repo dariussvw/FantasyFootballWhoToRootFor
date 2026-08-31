@@ -162,7 +162,10 @@ if username:
                 ]
 
                 if game_players:
-                    with st.expander(f"🏈 {away} @ {home} | {game['score']} ({game['status']})", expanded=True):
+                    # Matchup-Titel hervorheben
+                    header_label = f"🏈 **{away} @ {home}** | **{game['score']}** ({game['status']})"
+                    
+                    with st.expander(header_label, expanded=True):
                         
                         # Sortieren: Spieler mit höchstem Netto-Wert zuerst
                         game_players.sort(key=lambda p: (len(p["my_leagues"]) - len(p["opp_leagues"])), reverse=True)
@@ -187,14 +190,16 @@ if username:
                             else:
                                 status = f"🤬 CRASHOUT ({netto})"
 
-                            # Nutzung von st.container(border=True) für saubere, hochkante Karten auf dem Handy
+                            # Karte pro Spieler
                             with st.container(border=True):
-                                # Kopfzeile: Name & Auswirkung
-                                st.markdown(f"**{p['name']}** ({p['pos']}-{p['team']})  \n### {status}")
+                                # Spieler & Auswirkung auf exakt gleicher Überschriften-Ebene (###)
+                                st.markdown(f"### 👤 **{p['name']}** ({p['pos']}-{p['team']})")
+                                st.markdown(f"### {status}")
                                 
                                 my_l_str = ", ".join(p["my_leagues"]) if p["my_leagues"] else "–"
                                 opp_l_str = ", ".join(p["opp_leagues"]) if p["opp_leagues"] else "–"
                                 
+                                # Teams/Ligen optisch zurückhaltender darunter
                                 st.markdown(f"🟢 **Mein Team:** {my_l_str}")
                                 st.markdown(f"🔴 **Gegner:** {opp_l_str}")
 
