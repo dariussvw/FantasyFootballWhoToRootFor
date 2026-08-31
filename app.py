@@ -16,15 +16,42 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🏈 Fantasy Football - Who to root for?")
+# 1. Sprache wählen
+lang = st.radio("Language / Sprache:", options=["DE", "EN"], horizontal=True, index=0)
 
-# 1. Username ermitteln
+is_de = (lang == "DE")
+
+# Wörterbuch für Sprachausgaben
+labels = {
+    "title": "🏈 Fantasy Football - Who to root for?",
+    "username": "Sleeper Username:",
+    "week_overview": "Woche {week} - Matchup Übersicht" if is_de else "Week {week} - Matchup Overview",
+    "btn_collapse_all": "📁 Alle zuklappen" if is_de else "📁 Collapse All",
+    "btn_expand_all": "📂 Alle aufklappen" if is_de else "📂 Expand All",
+    "btn_live_only": "🔴 Nur Live-Spiele aufklappen" if is_de else "🔴 Expand Live Games Only",
+    "user_not_found": f"Sleeper-User {{username}} konnte nicht gefunden werden." if is_de else f"Sleeper user '{{username}}' could not be found.",
+    "no_leagues": f"Keine Ligen für die Saison {{season}} gefunden." if is_de else f"No leagues found for the {{season}} season.",
+    "no_live_games": "Keine Live-Spiele für diese Woche gefunden." if is_de else "No live games found for this week.",
+    "loading": "Lade Kader-, Live- und Punktestände..." if is_de else "Loading rosters, live scores, and stats...",
+    "player": "Spieler" if is_de else "Player",
+    "root": "Root?",
+    "my_team": "Mein Team" if is_de else "My Team",
+    "opponent": "Gegner" if is_de else "Opponent",
+    "no_games_scheduled": "Deine Spieler wurden geladen, aber für diese Woche sind aktuell keine NFL-Spiele angesetzt (z.B. Offseason / Preseason)." if is_de else "Your players were loaded, but there are currently no NFL games scheduled for this week (e.g., Offseason / Preseason).",
+    "tip_title": "💡 **Tipp zum Speichern & Teilen:**" if is_de else "💡 **Tip for Saving & Sharing:**",
+    "tip_desc": "Trage einfach deinen Sleeper-Namen ein. Die URL in deinem Browser passt sich automatisch an." if is_de else "Just enter your Sleeper username. The URL in your browser will automatically update.",
+    "input_prompt": "Bitte gib oben deinen Sleeper-Usernamen ein." if is_de else "Please enter your Sleeper username above."
+}
+
+st.title(labels["title"])
+
+# Username ermitteln
 query_params = st.query_params
 
 DEFAULT_USER = "Schmitz"
 
 initial_username = query_params.get("user", DEFAULT_USER)
-username = st.text_input("Sleeper Username:", value=initial_username)
+username = st.text_input(labels["username"], value=initial_username)
 
 if username:
     st.query_params["user"] = username
@@ -53,9 +80,9 @@ def format_status_to_cet(status_detail, date_str):
         cet_dt = utc_dt.astimezone(zoneinfo.ZoneInfo("Europe/Berlin"))
         
         if "STATUS_SCHEDULED" in status_detail or "PM" in status_detail or "AM" in status_detail or "EDT" in status_detail or "EST" in status_detail:
-            weekdays = ["Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So."]
+            weekdays = ["Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So."] if is_de else ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
             day_name = weekdays[cet_dt.weekday()]
-            return f"{day_name} {cet_dt.strftime('%H:%M')} Uhr"
+            return f"{day_name} {cet_dt.strftime('%H:%M')} Uhr" if is_de else f"{day_name} {cet_dt.strftime('%H:%M')}"
         return status_detail
     except Exception:
         return status_detail
@@ -101,8 +128,40 @@ def get_nfl_schedule(week, season):
     except Exception:
         return []
 
+def get_root_status(netto, is_german):
+    if is_german:
+        if netto >= 3:
+            return f"💦 ABFEUERN (+{netto})"
+        elif netto == 2:
+            return "🔥 JUBEL (+2)"
+        elif netto == 1:
+            return "🟢 GUTE (+1)"
+        elif netto == 0:
+            return "🤷 JUCKA (0)"
+        elif netto == -1:
+            return "🔴 DAMN (-1)"
+        elif netto == -2:
+            return "💀 FUCK (-2)"
+        else:
+            return f"🤬 CRASHOUT ({netto})"
+    else:
+        if netto >= 3:
+            return f"💦 Shoot! (+{netto})"
+        elif netto == 2:
+            return "🔥 Root (+2)"
+        elif netto == 1:
+            return "🟢 Nice (+1)"
+        elif netto == 0:
+            return "🤷 Wayne (0)"
+        elif netto == -1:
+            return "🔴 Damn (-1)"
+        elif netto == -2:
+            return "💀 Fuck (-2)"
+        else:
+            return f"🤬 Crashout ({netto})"
+
 if username and username != "DEIN_SLEEPER_USERNAME":
-    with st.spinner("Lade Kader-, Live- und Punktestände..."):
+    with st.spinner(labels["loading"]):
         all_players = get_nfl_players()
         nfl_state = get_current_nfl_state()
         current_week = nfl_state.get("week", 1)
@@ -111,13 +170,13 @@ if username and username != "DEIN_SLEEPER_USERNAME":
         user_res = requests.get(f"https://api.sleeper.app/v1/user/{username}").json()
         
         if not user_res or "user_id" not in user_res:
-            st.error(f"Sleeper-User '{username}' konnte nicht gefunden werden.")
+            st.error(labels["user_not_found"].format(username=username))
         else:
             user_id = user_res["user_id"]
             leagues = requests.get(f"https://api.sleeper.app/v1/user/{user_id}/leagues/nfl/{season}").json()
             
             if not leagues:
-                st.warning(f"Keine Ligen für die Saison {season} gefunden.")
+                st.warning(labels["no_leagues"].format(season=season))
             
             player_data = {}
             
@@ -184,23 +243,23 @@ if username and username != "DEIN_SLEEPER_USERNAME":
 
             games = get_nfl_schedule(current_week, season)
 
-            st.write(f"### Woche {current_week} - Matchup Übersicht")
+            st.write(f"### {labels['week_overview'].format(week=current_week)}")
 
             # Steuerungselemente: Buttons nebeneinander
             col1, col2 = st.columns(2)
             with col1:
-                btn_all_label = "📁 Alle zuklappen" if st.session_state.expand_mode == "all" else "📂 Alle aufklappen"
+                btn_all_label = labels["btn_collapse_all"] if st.session_state.expand_mode == "all" else labels["btn_expand_all"]
                 if st.button(btn_all_label, use_container_width=True):
                     st.session_state.expand_mode = "none" if st.session_state.expand_mode == "all" else "all"
                     st.rerun()
 
             with col2:
-                if st.button("🔴 Nur Live-Spiele aufklappen", use_container_width=True):
+                if st.button(labels["btn_live_only"], use_container_width=True):
                     st.session_state.expand_mode = "live_only"
                     st.rerun()
 
             if not games:
-                st.warning("Keine Live-Spiele für diese Woche gefunden.")
+                st.warning(labels["no_live_games"])
             
             found_any_player = False
             for game in games:
@@ -216,7 +275,6 @@ if username and username != "DEIN_SLEEPER_USERNAME":
                     found_any_player = True
                     header_label = f"🏈 {away} @ {home} | {game['score']} ({game['status']})"
                     
-                    # Status des Aufklappens anhand des gewählten Modus bestimmen
                     if st.session_state.expand_mode == "all":
                         is_expanded = True
                     elif st.session_state.expand_mode == "none":
@@ -234,40 +292,27 @@ if username and username != "DEIN_SLEEPER_USERNAME":
                             opp_cnt = len(p["opp_leagues"])
                             netto = my_cnt - opp_cnt
 
-                            if netto >= 3:
-                                status = f"💦 ABFEUERN (+{netto})"
-                            elif netto == 2:
-                                status = "🔥 JUBEL (+2)"
-                            elif netto == 1:
-                                status = "🟢 GUTE (+1)"
-                            elif netto == 0:
-                                status = "🤷 JUCKA (0)"
-                            elif netto == -1:
-                                status = "🔴 DAMN (-1)"
-                            elif netto == -2:
-                                status = "💀 FUCK (-2)"
-                            else:
-                                status = f"🤬 CRASHOUT ({netto})"
+                            status = get_root_status(netto, is_de)
 
                             with st.container(border=True):
-                                st.markdown(f"**Spieler:** {p['name']} ({p['pos']}-{p['team']})")
-                                st.markdown(f"**Auswirkung:** {status}")
+                                st.markdown(f"**{labels['player']}:** {p['name']} ({p['pos']}-{p['team']})")
+                                st.markdown(f"**{labels['root']}:** {status}")
                                 
                                 my_l_str = ", ".join(p["my_leagues"]) if p["my_leagues"] else "–"
                                 opp_l_str = ", ".join(p["opp_leagues"]) if p["opp_leagues"] else "–"
                                 
-                                st.markdown(f"**Mein Team:** {my_l_str}")
-                                st.markdown(f"**Gegner:** {opp_l_str}")
+                                st.markdown(f"**{labels['my_team']}:** {my_l_str}")
+                                st.markdown(f"**{labels['opponent']}:** {opp_l_str}")
 
             if not found_any_player and player_data:
-                st.info("Deine Spieler wurden geladen, aber für diese Woche sind aktuell keine NFL-Spiele angesetzt (z.B. Offseason / Preseason).")
+                st.info(labels["no_games_scheduled"])
 
             st.divider()
-            st.caption("💡 **Tipp zum Speichern & Teilen:**")
-            st.caption("Trage einfach deinen Sleeper-Namen ein. Die URL in deinem Browser passt sich automatisch an.")
+            st.caption(labels["tip_title"])
+            st.caption(labels["tip_desc"])
 
 else:
-    st.info("Bitte gib oben deinen Sleeper-Usernamen ein.")
+    st.info(labels["input_prompt"])
 
 time.sleep(30)
 st.rerun()
