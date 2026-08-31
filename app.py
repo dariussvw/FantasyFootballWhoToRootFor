@@ -37,7 +37,8 @@ def get_nfl_players():
         return res.json()
     return {}
 
-@st.cache_data(ttl=60)
+# Cache-Dauer auf 30 Sekunden reduziert
+@st.cache_data(ttl=30)
 def get_current_nfl_state():
     res = requests.get("https://api.sleeper.app/v1/state/nfl")
     if res.status_code == 200:
@@ -57,7 +58,8 @@ def format_status_to_cet(status_detail, date_str):
     except Exception:
         return status_detail
 
-@st.cache_data(ttl=60)
+# Cache-Dauer auf 30 Sekunden reduziert
+@st.cache_data(ttl=30)
 def get_nfl_schedule(week, season):
     try:
         url = f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates={season}&week={week}"
@@ -131,115 +133,4 @@ if username and username != "DEIN_SLEEPER_USERNAME":
                 if my_team_data and my_team_data.get("starters"):
                     my_player_ids = [p for p in my_team_data.get("starters", []) if p and p != "0"]
                 else:
-                    my_roster_obj = next((r for r in rosters if r.get("roster_id") == my_roster_id), None)
-                    if my_roster_obj and my_roster_obj.get("players"):
-                        my_player_ids = my_roster_obj.get("players", [])
-
-                # Punkte-Dictionary aus dem Matchup holen
-                my_pts_dict = my_team_data.get("players_points", {}) if my_team_data else {}
-
-                for pid in my_player_ids:
-                    if pid not in player_data:
-                        p_info = all_players.get(pid, {})
-                        player_data[pid] = {
-                            "name": f"{p_info.get('first_name', '')} {p_info.get('last_name', pid)}",
-                            "pos": p_info.get("position", "DEF"),
-                            "team": p_info.get("team", "FA"),
-                            "my_leagues": [],
-                            "opp_leagues": []
-                        }
-                    
-                    pts = my_pts_dict.get(pid, 0.0)
-                    pts_str = f"{pts:.1f}" if pts is not None else "0.0"
-                    player_data[pid]["my_leagues"].append(f"{l_name} ({pts_str} Pts)")
-
-                # Gegner-Spieler erfassen
-                if my_team_data:
-                    my_matchup_id = my_team_data.get("matchup_id")
-                    opp_team_data = next((m for m in matchups if m and m.get("matchup_id") == my_matchup_id and m.get("roster_id") != my_roster_id), None)
-                    if opp_team_data:
-                        opp_pids = opp_team_data.get("starters", []) if opp_team_data.get("starters") else opp_team_data.get("players", [])
-                        opp_pts_dict = opp_team_data.get("players_points", {}) if opp_team_data else {}
-
-                        for pid in opp_pids:
-                            if pid and pid != "0":
-                                if pid not in player_data:
-                                    p_info = all_players.get(pid, {})
-                                    player_data[pid] = {
-                                        "name": f"{p_info.get('first_name', '')} {p_info.get('last_name', pid)}",
-                                        "pos": p_info.get("position", "DEF"),
-                                        "team": p_info.get("team", "FA"),
-                                        "my_leagues": [],
-                                        "opp_leagues": []
-                                    }
-                                
-                                pts = opp_pts_dict.get(pid, 0.0)
-                                pts_str = f"{pts:.1f}" if pts is not None else "0.0"
-                                player_data[pid]["opp_leagues"].append(f"{l_name} ({pts_str} Pts)")
-
-            games = get_nfl_schedule(current_week, season)
-
-            st.write(f"### Woche {current_week} - Matchup Übersicht")
-
-            if not games:
-                st.warning("Keine Live-Spiele für diese Woche gefunden.")
-            
-            found_any_player = False
-            for game in games:
-                home = game["home_team"]
-                away = game["away_team"]
-                
-                game_players = [
-                    p for p in player_data.values() 
-                    if p["team"] in [home, away]
-                ]
-
-                if game_players:
-                    found_any_player = True
-                    header_label = f"🏈 {away} @ {home} | {game['score']} ({game['status']})"
-                    
-                    with st.expander(header_label, expanded=True):
-                        game_players.sort(key=lambda p: (len(p["my_leagues"]) - len(p["opp_leagues"])), reverse=True)
-
-                        for p in game_players:
-                            my_cnt = len(p["my_leagues"])
-                            opp_cnt = len(p["opp_leagues"])
-                            netto = my_cnt - opp_cnt
-
-                            if netto >= 3:
-                                status = f"💦 ABFEUERN (+{netto})"
-                            elif netto == 2:
-                                status = "🔥 JUBEL (+2)"
-                            elif netto == 1:
-                                status = "🟢 GUTE (+1)"
-                            elif netto == 0:
-                                status = "🤷 JUCKA (0)"
-                            elif netto == -1:
-                                status = "🔴 DAMN (-1)"
-                            elif netto == -2:
-                                status = "💀 FUCK (-2)"
-                            else:
-                                status = f"🤬 CRASHOUT ({netto})"
-
-                            with st.container(border=True):
-                                st.markdown(f"**Spieler:** {p['name']} ({p['pos']}-{p['team']})")
-                                st.markdown(f"**Auswirkung:** {status}")
-                                
-                                my_l_str = ", ".join(p["my_leagues"]) if p["my_leagues"] else "–"
-                                opp_l_str = ", ".join(p["opp_leagues"]) if p["opp_leagues"] else "–"
-                                
-                                st.markdown(f"**Mein Team:** {my_l_str}")
-                                st.markdown(f"**Gegner:** {opp_l_str}")
-
-            if not found_any_player and player_data:
-                st.info("Deine Spieler wurden geladen, aber für diese Woche sind aktuell keine NFL-Spiele angesetzt (z.B. Offseason / Preseason).")
-
-            st.divider()
-            st.caption("💡 **Tipp zum Speichern & Teilen:**")
-            st.caption("Trage einfach deinen Sleeper-Namen ein. Die URL in deinem Browser passt sich automatisch an.")
-
-else:
-    st.info("Bitte gib oben deinen Sleeper-Usernamen ein.")
-
-time.sleep(60)
-st.rerun()
+                    my_roster_obj = next((
