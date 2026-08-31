@@ -1,5 +1,7 @@
 import streamlit as st
 import requests
+from datetime import datetime
+import zoneinfo
 
 st.set_page_config(page_title="Sleeper NFL Game Monitor", layout="wide", initial_sidebar_state="collapsed")
 
@@ -21,6 +23,22 @@ def get_current_nfl_state():
     """Holt die aktuelle Woche und Saison-Phase."""
     return requests.get("https://api.sleeper.app/v1/state/nfl").json()
 
+def format_status_to_cet(status_detail, date_str):
+    """Wandelt Spielzeiten/Datum in mitteleuropäische Zeit (CET/CEST) im 24h-Format um."""
+    try:
+        # Versuche das ISO-Datum aus der API zu parsen
+        utc_dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        cet_dt = utc_dt.astimezone(zoneinfo.ZoneInfo("Europe/Berlin"))
+        
+        # Wenn das Spiel noch nicht läuft (Zustand beinhaltet Datum/Uhrzeit)
+        if "STATUS_SCHEDULED" in status_detail or "PM" in status_detail or "AM" in status_detail or "EDT" in status_detail or "EST" in status_detail:
+            weekdays = ["Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So."]
+            day_name = weekdays[cet_dt.weekday()]
+            return f"{day_name} {cet_dt.strftime('%H:%M')} Uhr"
+        return status_detail
+    except Exception:
+        return status_detail
+
 @st.cache_data(ttl=60)
 def get_nfl_schedule(week, season):
     """Holt den aktuellen NFL Spielplan und Live Scores von ESPN."""
@@ -34,8 +52,17 @@ def get_nfl_schedule(week, season):
             away_team = competition["competitors"][1]["team"]["abbreviation"]
             home_score = competition["competitors"][0].get("score", "0")
             away_score = competition["competitors"][1].get("score", "0")
-            status = event["status"]["type"]["shortDetail"]
             
+            raw_status = event["status"]["type"]["shortDetail"]
+            raw_type = event["status"]["type"]["name"]
+            date_str = event.get("date", "")
+            
+            # Formatierung der Zeit für Deutschland
+            if raw_type == "STATUS_SCHEDULED":
+                status = format_status_to_cet(raw_type, date_str)
+            else:
+                status = raw_status
+
             # Umbenennen für Sleeper Kompatibilität (z.B. WSH -> WAS, LAR -> LA)
             alias = {"WSH": "WAS", "LAR": "LA", "NOP": "NO", "TBB": "TB"}
             home_team = alias.get(home_team, home_team)
@@ -150,9 +177,9 @@ if username:
                             opp_cnt = len(p["opp_leagues"])
                             netto = my_cnt - opp_cnt
 
-                            # Neue Jugendsprache-Skala
+                            # Aktualisierte Jugendsprache-Skala
                             if netto >= 3:
-                                status = f"🎆 ABFEUERN (+{netto})"
+                                status = f"💦 ABFEUERN (+{netto})"
                             elif netto == 2:
                                 status = "🔥 JUBEL (+2)"
                             elif netto == 1:
@@ -160,7 +187,7 @@ if username:
                             elif netto == 0:
                                 status = "🤷 JUCKA (0)"
                             elif netto == -1:
-                                status = "😮‍💨 DAMN (-1)"
+                                status = "🔴 DAMN (-1)"
                             elif netto == -2:
                                 status = "💀 FUCK (-2)"
                             else: # <= -3
