@@ -14,15 +14,12 @@ query_params = st.query_params
 # TRAGE HIER DEINEN EIGENEN SLEEPER-NAMEN EIN (als Standard für dich):
 DEFAULT_USER = "DEIN_SLEEPER_USERNAME" 
 
-# Priorität: 1. Name aus URL (?user=...), 2. DEINT_SLEEPER_USERNAME, 3. Leer
 initial_username = query_params.get("user", DEFAULT_USER)
 
 # Eingabefeld für den Benutzernamen
 username = st.text_input("Sleeper Username:", value=initial_username)
 
-# Wenn ein Name eingegeben ist, erstelle einen persönlichen Teilen-Link
 if username:
-    # Aktualisiert die URL im Browser, damit man die Seite direkt als Lesezeichen speichern kann
     st.query_params["user"] = username
 
 @st.cache_data(ttl=3600)
@@ -166,7 +163,10 @@ if username:
 
                 if game_players:
                     with st.expander(f"🏈 {away} @ {home} | {game['score']} ({game['status']})", expanded=True):
-                        table_data = []
+                        
+                        # Sortieren: Spieler mit höchstem Netto-Wert zuerst
+                        game_players.sort(key=lambda p: (len(p["my_leagues"]) - len(p["opp_leagues"])), reverse=True)
+
                         for p in game_players:
                             my_cnt = len(p["my_leagues"])
                             opp_cnt = len(p["opp_leagues"])
@@ -187,26 +187,20 @@ if username:
                             else:
                                 status = f"🤬 CRASHOUT ({netto})"
 
-                            table_data.append({
-                                "Spieler": f"{p['name']} ({p['pos']}-{p['team']})",
-                                "Mein Team": ", ".join(p["my_leagues"]) if p["my_leagues"] else "-",
-                                "Gegner": ", ".join(p["opp_leagues"]) if p["opp_leagues"] else "-",
-                                "Auswirkung": status
-                            })
+                            # Nutzung von st.container(border=True) für saubere, hochkante Karten auf dem Handy
+                            with st.container(border=True):
+                                # Kopfzeile: Name & Auswirkung
+                                st.markdown(f"**{p['name']}** ({p['pos']}-{p['team']})  \n### {status}")
+                                
+                                my_l_str = ", ".join(p["my_leagues"]) if p["my_leagues"] else "–"
+                                opp_l_str = ", ".join(p["opp_leagues"]) if p["opp_leagues"] else "–"
+                                
+                                st.markdown(f"🟢 **Mein Team:** {my_l_str}")
+                                st.markdown(f"🔴 **Gegner:** {opp_l_str}")
 
-                        column_order = ["Spieler", "Mein Team", "Gegner", "Auswirkung"]
-                        st.dataframe(
-                            table_data, 
-                            column_order=column_order,
-                            use_container_width=True, 
-                            hide_index=True
-                        )
-
-            # Hinweis für Freunde / Lesezeichen
             st.divider()
             st.caption("💡 **Tipp zum Speichern & Teilen:**")
-            st.caption(f"Trage einfach oben deinen Sleeper-Namen ein. Die URL in deinem Browser passt sich automatisch an. Wenn du dir diese URL als Favorit oder auf deinem Smartphone-Startbildschirm abspeicherst, öffnet sich die App jedes Mal direkt mit deinen Daten!")
+            st.caption("Trage einfach deinen Sleeper-Namen ein. Die URL in deinem Browser passt sich automatisch an. Wenn du dir diese URL als Favorit oder auf deinem Smartphone-Startbildschirm abspeicherst, öffnet sich die App jedes Mal direkt mit deinen Daten!")
 
-    # Sicheres Auto-Refresh ohne Extra-Paket (alle 60 Sekunden)
     time.sleep(60)
     st.rerun()
