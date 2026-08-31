@@ -1,3 +1,4 @@
 streamlit
 requests
 espn-api
+streamlit.components.v1
