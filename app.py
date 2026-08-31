@@ -8,6 +8,7 @@ import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="Fantasy Football - Who to root for?",
+    page_icon="logo.png",  # Favicon im Browser-Tab
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -83,9 +84,15 @@ labels = {
     ),
 }
 
-st.title(labels["title"])
+# Hauptbereich Header mit Logo & Titel
+col_logo, col_title = st.columns([1, 6])
+with col_logo:
+    st.image("logo.png", use_container_width=True)
+with col_title:
+    st.title(labels["title"])
 
 # Optionaler Bereich für öffentliche ESPN-Ligen in der Sidebar
+st.sidebar.image("logo.png", use_container_width=True)
 st.sidebar.header("Öffentliche ESPN Liga (Optional)")
 espn_league_id = st.sidebar.text_input(
     "ESPN League ID:", value="", help="Nur für öffentliche ESPN-Ligen"
