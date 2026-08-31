@@ -1,6 +1,7 @@
 import zoneinfo
 from datetime import datetime
 
+from espn_api.football import League as ESPNLeague
 import requests
 import streamlit as st
 import streamlit.components.v1 as components
@@ -17,7 +18,6 @@ lang = st.radio(
 )
 is_de = lang == "DE"
 
-# Wörterbuch für Sprachausgaben
 labels = {
     "title": "Fantasy Football - Who to root for?",
     "username": "Sleeper Username:",
@@ -29,9 +29,7 @@ labels = {
     "btn_collapse_all": "Alle zuklappen" if is_de else "Collapse All",
     "btn_expand_all": "Alle aufklappen" if is_de else "Expand All",
     "btn_live_only": (
-        "Nur Live-Spiele aufklappen"
-        if is_de
-        else "Expand Live Games Only"
+        "Nur Live-Spiele aufklappen" if is_de else "Expand Live Games Only"
     ),
     "user_not_found": (
         "Sleeper-User '{username}' konnte nicht gefunden werden."
@@ -59,17 +57,15 @@ labels = {
     "opponent": "Gegner" if is_de else "Opponent",
     "no_games_scheduled": (
         "Deine Spieler wurden geladen, aber für diese Woche sind aktuell keine"
-        " NFL-Spiele angesetzt (z.B. Offseason / Preseason)."
+        " NFL-Spiele angesetzt."
         if is_de
         else (
             "Your players were loaded, but there are currently no NFL games"
-            " scheduled for this week (e.g., Offseason / Preseason)."
+            " scheduled for this week."
         )
     ),
     "tip_title": (
-        "Tipp zum Speichern & Teilen:"
-        if is_de
-        else "Tip for Saving & Sharing:"
+        "Tipp zum Speichern & Teilen:" if is_de else "Tip for Saving & Sharing:"
     ),
     "tip_desc": (
         "Trage einfach deinen Sleeper-Namen ein. Die URL in deinem Browser passt"
@@ -89,10 +85,20 @@ labels = {
 
 st.title(labels["title"])
 
-# Username ermitteln
+# Optionaler Bereich für ESPN in der Sidebar
+st.sidebar.header("ESPN Integration (Optional)")
+espn_league_id = st.sidebar.text_input(
+    "ESPN League ID:", value="", help="Leer lassen, wenn nur Sleeper genutzt wird"
+)
+espn_team_name = st.sidebar.text_input("Dein ESPN Teamname:", value="")
+espn_s2 = st.sidebar.text_input(
+    "ESPN_S2 (nur bei privaten Ligen):", value="", type="password"
+)
+swid = st.sidebar.text_input("SWID (nur bei privaten Ligen):", value="")
+
+# Sleeper Username ermitteln
 query_params = st.query_params
 DEFAULT_USER = "Schmitz"
-
 initial_username = query_params.get("user", DEFAULT_USER)
 username = st.text_input(labels["username"], value=initial_username)
 
@@ -167,10 +173,11 @@ def get_nfl_schedule(week, season, is_german):
                 and raw_type != "STATUS_POSTPONED"
             )
 
-            if raw_type == "STATUS_SCHEDULED":
-                status = format_status_to_cet(raw_type, date_str, is_german)
-            else:
-                status = raw_status
+            status = (
+                format_status_to_cet(raw_type, date_str, is_german)
+                if raw_type == "STATUS_SCHEDULED"
+                else raw_status
+            )
 
             alias = {"WSH": "WAS", "LAR": "LA", "NOP": "NO", "TBB": "TB"}
             home_team = alias.get(home_team, home_team)
@@ -222,12 +229,34 @@ def get_root_status(netto, is_german):
             return f"🤬 Crashout ({netto})"
 
 
+def normalize_name(name):
+    """Bereinigt Spielernamen für einen exakten Abgleich zwischen Sleeper und ESPN."""
+    return (
+        name.lower()
+        .replace(".", "")
+        .replace("'", "")
+        .replace("-", " ")
+        .replace(" jr", "")
+        .replace(" sr", "")
+        .strip()
+    )
+
+
 if username:
     with st.spinner(labels["loading"]):
         all_players = get_nfl_players()
         nfl_state = get_current_nfl_state()
         current_week = nfl_state.get("week", 1)
         season = nfl_state.get("season", "2026")
+
+        # Erstelle ein Mapping von bereinigtem Namen auf die Sleeper Player ID
+        name_to_sleeper_id = {}
+        for pid, pdata in all_players.items():
+            full_n = (
+                f"{pdata.get('first_name', '')} {pdata.get('last_name', '')}"
+            )
+            if full_n.strip():
+                name_to_sleeper_id[normalize_name(full_n)] = pid
 
         user_res = requests.get(
             f"https://api.sleeper.app/v1/user/{username}"
@@ -241,11 +270,12 @@ if username:
                 f"https://api.sleeper.app/v1/user/{user_id}/leagues/nfl/{season}"
             ).json()
 
-            if not leagues:
+            if not leagues and not espn_league_id:
                 st.warning(labels["no_leagues"].format(season=season))
 
             player_data = {}
 
+            # --- 1. SLEEPER LIGEN VERARBEITEN ---
             for league in leagues:
                 l_id = league["league_id"]
                 l_name = league["name"]
@@ -373,6 +403,118 @@ if username:
                                     f"{l_name} ({pts_str} Pts)"
                                 )
 
+            # --- 2. ESPN LIGA NUR FÜR PUNKTE UND MATCHUPS NUNTZEN ---
+            if espn_league_id and espn_team_name:
+                try:
+                    kwargs = {
+                        "league_id": int(espn_league_id),
+                        "year": int(season),
+                    }
+                    if espn_s2 and swid:
+                        kwargs["espn_s2"] = espn_s2
+                        kwargs["swid"] = swid
+
+                    espn_league = ESPNLeague(**kwargs)
+                    espn_league_name = getattr(
+                        espn_league.settings, "name", "ESPN League"
+                    )
+
+                    my_espn_team = next(
+                        (
+                            t
+                            for t in espn_league.teams
+                            if espn_team_name.lower() in t.team_name.lower()
+                        ),
+                        None,
+                    )
+
+                    if my_espn_team:
+                        box_scores = espn_league.box_scores(current_week)
+                        my_box = next(
+                            (
+                                b
+                                for b in box_scores
+                                if b.home_team == my_espn_team
+                                or b.away_team == my_espn_team
+                            ),
+                            None,
+                        )
+
+                        if my_box:
+                            is_home = my_box.home_team == my_espn_team
+                            my_lineup = (
+                                my_box.home_lineup
+                                if is_home
+                                else my_box.away_lineup
+                            )
+                            opp_lineup = (
+                                my_box.away_lineup
+                                if is_home
+                                else my_box.home_lineup
+                            )
+
+                            # Eigene ESPN-Starter verarbeiten
+                            for espn_player in my_lineup:
+                                if espn_player.slot_position != "BE":
+                                    norm_name = normalize_name(espn_player.name)
+                                    s_pid = name_to_sleeper_id.get(norm_name)
+
+                                    if s_pid:
+                                        if s_pid not in player_data:
+                                            p_info = all_players.get(s_pid, {})
+                                            player_data[s_pid] = {
+                                                "name": (
+                                                    f"{p_info.get('first_name', '')}"
+                                                    f" {p_info.get('last_name', s_pid)}"
+                                                ),
+                                                "pos": p_info.get(
+                                                    "position", "DEF"
+                                                ),
+                                                "team": p_info.get(
+                                                    "team", "FA"
+                                                ),
+                                                "my_leagues": [],
+                                                "opp_leagues": [],
+                                            }
+
+                                        pts_str = f"{espn_player.points:.1f}"
+                                        player_data[s_pid]["my_leagues"].append(
+                                            f"ESPN: {espn_league_name} ({pts_str} Pts)"
+                                        )
+
+                            # Gegner-ESPN-Starter verarbeiten
+                            for espn_player in opp_lineup:
+                                if espn_player.slot_position != "BE":
+                                    norm_name = normalize_name(espn_player.name)
+                                    s_pid = name_to_sleeper_id.get(norm_name)
+
+                                    if s_pid:
+                                        if s_pid not in player_data:
+                                            p_info = all_players.get(s_pid, {})
+                                            player_data[s_pid] = {
+                                                "name": (
+                                                    f"{p_info.get('first_name', '')}"
+                                                    f" {p_info.get('last_name', s_pid)}"
+                                                ),
+                                                "pos": p_info.get(
+                                                    "position", "DEF"
+                                                ),
+                                                "team": p_info.get(
+                                                    "team", "FA"
+                                                ),
+                                                "my_leagues": [],
+                                                "opp_leagues": [],
+                                            }
+
+                                        pts_str = f"{espn_player.points:.1f}"
+                                        player_data[s_pid]["opp_leagues"].append(
+                                            f"ESPN: {espn_league_name} ({pts_str} Pts)"
+                                        )
+
+                except Exception as e:
+                    st.sidebar.error(f"Fehler bei ESPN: {e}")
+
+            # --- 3. NFL-SCHEDULE UND EXPANDER-DARSTELLUNG ---
             games = get_nfl_schedule(current_week, season, is_de)
 
             st.write(f"### {labels['week_overview'].format(week=current_week)}")
