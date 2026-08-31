@@ -29,9 +29,9 @@ username = st.text_input("Sleeper Username:", value=initial_username)
 if username:
     st.query_params["user"] = username
 
-# Session State für Auf-/Zuklappen aller Expandable Cards initialisieren
-if "expand_all" not in st.session_state:
-    st.session_state.expand_all = True
+# Session State Steuerung: 'all', 'none', oder 'live_only'
+if "expand_mode" not in st.session_state:
+    st.session_state.expand_mode = "all"
 
 @st.cache_data(ttl=3600)
 def get_nfl_players():
@@ -77,6 +77,9 @@ def get_nfl_schedule(week, season):
             raw_type = event["status"]["type"]["name"]
             date_str = event.get("date", "")
             
+            # Überprüfen, ob das Spiel gerade LIVE läuft
+            is_live = raw_type == "STATUS_IN_PROGRESS" or ("STATUS_SCHEDULED" not in raw_type and "STATUS_FINAL" not in raw_type and raw_type != "STATUS_POSTPONED")
+
             if raw_type == "STATUS_SCHEDULED":
                 status = format_status_to_cet(raw_type, date_str)
             else:
@@ -91,6 +94,7 @@ def get_nfl_schedule(week, season):
                 "home_team": home_team,
                 "away_team": away_team,
                 "status": status,
+                "is_live": is_live,
                 "score": f"{away_team} {away_score} @ {home_team} {home_score}"
             })
         return games
@@ -180,14 +184,19 @@ if username and username != "DEIN_SLEEPER_USERNAME":
 
             games = get_nfl_schedule(current_week, season)
 
-            # Header & Steuerungs-Button
-            col1, col2 = st.columns([3, 1])
+            st.write(f"### Woche {current_week} - Matchup Übersicht")
+
+            # Steuerungselemente: Buttons nebeneinander
+            col1, col2 = st.columns(2)
             with col1:
-                st.write(f"### Woche {current_week} - Matchup Übersicht")
+                btn_all_label = "📁 Alle zuklappen" if st.session_state.expand_mode == "all" else "📂 Alle aufklappen"
+                if st.button(btn_all_label, use_container_width=True):
+                    st.session_state.expand_mode = "none" if st.session_state.expand_mode == "all" else "all"
+                    st.rerun()
+
             with col2:
-                button_label = "📁 Alle zuklappen" if st.session_state.expand_all else "📂 Alle aufklappen"
-                if st.button(button_label, use_container_width=True):
-                    st.session_state.expand_all = not st.session_state.expand_all
+                if st.button("🔴 Nur Live-Spiele aufklappen", use_container_width=True):
+                    st.session_state.expand_mode = "live_only"
                     st.rerun()
 
             if not games:
@@ -207,7 +216,17 @@ if username and username != "DEIN_SLEEPER_USERNAME":
                     found_any_player = True
                     header_label = f"🏈 {away} @ {home} | {game['score']} ({game['status']})"
                     
-                    with st.expander(header_label, expanded=st.session_state.expand_all):
+                    # Status des Aufklappens anhand des gewählten Modus bestimmen
+                    if st.session_state.expand_mode == "all":
+                        is_expanded = True
+                    elif st.session_state.expand_mode == "none":
+                        is_expanded = False
+                    elif st.session_state.expand_mode == "live_only":
+                        is_expanded = game["is_live"]
+                    else:
+                        is_expanded = True
+
+                    with st.expander(header_label, expanded=is_expanded):
                         game_players.sort(key=lambda p: (len(p["my_leagues"]) - len(p["opp_leagues"])), reverse=True)
 
                         for p in game_players:
