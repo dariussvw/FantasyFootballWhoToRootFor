@@ -3,6 +3,7 @@ from datetime import datetime
 
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="Fantasy Football - Who to root for?",
@@ -18,19 +19,19 @@ is_de = lang == "DE"
 
 # Wörterbuch für Sprachausgaben
 labels = {
-    "title": "🏈 Fantasy Football - Who to root for?",
+    "title": "Fantasy Football - Who to root for?",
     "username": "Sleeper Username:",
     "week_overview": (
         "Woche {week} - Matchup Übersicht"
         if is_de
         else "Week {week} - Matchup Overview"
     ),
-    "btn_collapse_all": "📁 Alle zuklappen" if is_de else "📁 Collapse All",
-    "btn_expand_all": "📂 Alle aufklappen" if is_de else "📂 Expand All",
+    "btn_collapse_all": "Alle zuklappen" if is_de else "Collapse All",
+    "btn_expand_all": "Alle aufklappen" if is_de else "Expand All",
     "btn_live_only": (
-        "🔴 Nur Live-Spiele aufklappen"
+        "Nur Live-Spiele aufklappen"
         if is_de
-        else "🔴 Expand Live Games Only"
+        else "Expand Live Games Only"
     ),
     "user_not_found": (
         "Sleeper-User '{username}' konnte nicht gefunden werden."
@@ -66,9 +67,9 @@ labels = {
         )
     ),
     "tip_title": (
-        "💡 **Tipp zum Speichern & Teilen:**"
+        "Tipp zum Speichern & Teilen:"
         if is_de
-        else "💡 **Tip for Saving & Sharing:**"
+        else "Tip for Saving & Sharing:"
     ),
     "tip_desc": (
         "Trage einfach deinen Sleeper-Namen ein. Die URL in deinem Browser passt"
@@ -399,7 +400,9 @@ if username:
             if not games:
                 st.warning(labels["no_live_games"])
 
-            # 1. Nur relevante Spiele filtern & Netto berechnen
+            # Farbmaps für JavaScript-Zuweisung speichern
+            color_map_js = {}
+
             relevant_games = []
             for game in games:
                 home = game["home_team"]
@@ -421,56 +424,37 @@ if username:
                         "netto": game_netto,
                     })
 
-            # 2. Generiere genau ein zentrales CSS-Tag für alle Expander-Header
-            css_styles = []
-            for idx, item in enumerate(relevant_games, start=1):
-                netto = item["netto"]
-
-                if netto >= 3:
-                    bg_color = "#d4edda"
-                    border_color = "#c3e6cb"
-                elif netto in [1, 2]:
-                    bg_color = "#e8f5e9"
-                    border_color = "#a5d6a7"
-                elif netto in [-1, -2]:
-                    bg_color = "#ffebee"
-                    border_color = "#ef9a9a"
-                elif netto <= -3:
-                    bg_color = "#f8d7da"
-                    border_color = "#f5c6cb"
-                else:
-                    bg_color = "#f8f9fa"
-                    border_color = "#e0e0e0"
-
-                # Zielt direkt auf die Matchup-Zeile (Expander Header/Summary) des X-ten Expanders
-                css_styles.append(f"""
-                div[data-testid="stExpander"]:nth-of-type({idx}) details summary {{
-                    background-color: {bg_color} !important;
-                    border: 1px solid {border_color} !important;
-                    border-radius: 8px !important;
-                }}
-                div[data-testid="stExpander"]:nth-of-type({idx}) details summary:hover {{
-                    border-color: {border_color} !important;
-                }}
-                """)
-
-            if css_styles:
-                st.markdown(
-                    f"<style>{''.join(css_styles)}</style>",
-                    unsafe_allow_html=True,
-                )
-
-            # 3. Expander sauber rendern
             if relevant_games:
                 for item in relevant_games:
                     game = item["game"]
                     game_players = item["players"]
+                    netto = item["netto"]
                     away = game["away_team"]
                     home = game["home_team"]
+
+                    # Farbbestimmung basierend auf Netto
+                    if netto >= 3:
+                        bg_color = "#d4edda"
+                        border_color = "#c3e6cb"
+                    elif netto in [1, 2]:
+                        bg_color = "#e8f5e9"
+                        border_color = "#a5d6a7"
+                    elif netto in [-1, -2]:
+                        bg_color = "#ffebee"
+                        border_color = "#ef9a9a"
+                    elif netto <= -3:
+                        bg_color = "#f8d7da"
+                        border_color = "#f5c6cb"
+                    else:
+                        bg_color = "#f8f9fa"
+                        border_color = "#e0e0e0"
 
                     header_label = (
                         f"{away} @ {home} | {game['score']} ({game['status']})"
                     )
+
+                    # Speichere Farben für den JS-Injector
+                    color_map_js[header_label] = (bg_color, border_color)
 
                     if st.session_state.expand_mode == "all":
                         is_expanded = True
@@ -520,6 +504,25 @@ if username:
                                 st.markdown(
                                     f"**{labels['opponent']}:** {opp_l_str}"
                                 )
+
+                # Dynamic JavaScript block targeting summary tags directly via iframe parent context
+                js_script = "<script>"
+                for title, (bg, border) in color_map_js.items():
+                    escaped_title = title.replace("'", "\\'")
+                    js_script += f"""
+                    try {{
+                        const summaries = window.parent.document.querySelectorAll('details summary');
+                        summaries.forEach(el => {{
+                            if (el.innerText.includes('{escaped_title}')) {{
+                                el.style.backgroundColor = '{bg}';
+                                el.style.border = '1px solid {border}';
+                                el.style.borderRadius = '8px';
+                            }}
+                        }});
+                    }} catch(e) {{ console.error(e); }}
+                    """
+                js_script += "</script>"
+                components.html(js_script, height=0, width=0)
 
             elif player_data:
                 st.info(labels["no_games_scheduled"])
