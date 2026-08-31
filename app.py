@@ -29,6 +29,10 @@ username = st.text_input("Sleeper Username:", value=initial_username)
 if username:
     st.query_params["user"] = username
 
+# Session State für Auf-/Zuklappen aller Expandable Cards initialisieren
+if "expand_all" not in st.session_state:
+    st.session_state.expand_all = True
+
 @st.cache_data(ttl=3600)
 def get_nfl_players():
     res = requests.get("https://api.sleeper.app/v1/players/nfl")
@@ -176,7 +180,15 @@ if username and username != "DEIN_SLEEPER_USERNAME":
 
             games = get_nfl_schedule(current_week, season)
 
-            st.write(f"### Woche {current_week} - Matchup Übersicht")
+            # Header & Steuerungs-Button
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.write(f"### Woche {current_week} - Matchup Übersicht")
+            with col2:
+                button_label = "📁 Alle zuklappen" if st.session_state.expand_all else "📂 Alle aufklappen"
+                if st.button(button_label, use_container_width=True):
+                    st.session_state.expand_all = not st.session_state.expand_all
+                    st.rerun()
 
             if not games:
                 st.warning("Keine Live-Spiele für diese Woche gefunden.")
@@ -195,7 +207,7 @@ if username and username != "DEIN_SLEEPER_USERNAME":
                     found_any_player = True
                     header_label = f"🏈 {away} @ {home} | {game['score']} ({game['status']})"
                     
-                    with st.expander(header_label, expanded=True):
+                    with st.expander(header_label, expanded=st.session_state.expand_all):
                         game_players.sort(key=lambda p: (len(p["my_leagues"]) - len(p["opp_leagues"])), reverse=True)
 
                         for p in game_players:
