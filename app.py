@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# STYLING & DESIGN (Fix für Lesbarkeit im Light Mode)
+# STYLING & DESIGN (Fix für Matchup-Schriftfarbe)
 # ---------------------------------------------------------
 custom_css = """
 <style>
@@ -24,9 +24,16 @@ custom_css = """
         color: #f0f6fc !important;
     }
     
-    /* Erzwinge helle Schrift für ALLE Labels (Sprache, Inputs, Sidebar) */
-    label, p, span, div, .stWidgetLabel {
+    /* Helle Schrift für allgemeine Labels (Sprache, Inputs, Sidebar) */
+    .stApp label, .stApp .stWidgetLabel, [data-testid="stSidebar"] * {
         color: #f0f6fc !important;
+    }
+
+    /* MATCHUP-EXPANDER: Schrift IMMER schwarz & fett (übersteuert den Dark Mode) */
+    [data-testid="stExpander"] summary,
+    [data-testid="stExpander"] summary * {
+        color: #000000 !important;
+        font-weight: bold !important;
     }
 
     /* Haupt-Überschriften */
@@ -35,13 +42,10 @@ custom_css = """
         font-weight: 800 !important;
     }
     
-    /* Sidebar Styling & Schriftfarbe */
+    /* Sidebar Styling */
     [data-testid="stSidebar"] {
         background-color: #161b22 !important;
         border-right: 1px solid #30363d;
-    }
-    [data-testid="stSidebar"] label, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2 {
-        color: #f0f6fc !important;
     }
 
     /* Input Felder (Textinputs, Radiobuttons) */
@@ -73,6 +77,12 @@ custom_css = """
         border: 1px solid #30363d !important;
         border-radius: 10px !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+    }
+    
+    /* Spieler-Texte innerhalb der vergrößerten Karten hell machen */
+    [data-testid="stVerticalBlockBorderWrapper"] p, 
+    [data-testid="stVerticalBlockBorderWrapper"] span {
+        color: #f0f6fc !important;
     }
 
     /* Trennlinie & Captions */
