@@ -192,34 +192,34 @@ def get_nfl_schedule(week, season, is_german):
 def get_root_status(netto, is_german):
     if is_german:
         if netto >= 3:
-            return f"🔥 ABFEUERN (+{netto})"
+            return f"💦 ABFEUERN (+{netto})"
         elif netto == 2:
-            return "🙌 JUBEL (+2)"
+            return "🔥 JUBEL (+2)"
         elif netto == 1:
-            return "👍 GUTE (+1)"
+            return "🟢 GUTE (+1)"
         elif netto == 0:
             return "🤷 JUCKA (0)"
         elif netto == -1:
-            return "😬 DAMN (-1)"
+            return "🔴 DAMN (-1)"
         elif netto == -2:
-            return "🤬 FUCK (-2)"
+            return "💀 FUCK (-2)"
         else:
-            return f"💥 CRASHOUT ({netto})"
+            return f"🤬 CRASHOUT ({netto})"
     else:
         if netto >= 3:
-            return f"🔥 Shoot! (+{netto})"
+            return f"💦 Shoot! (+{netto})"
         elif netto == 2:
-            return "🙌 Root (+2)"
+            return "🔥 Root (+2)"
         elif netto == 1:
-            return "👍 Nice (+1)"
+            return "🟢 Nice (+1)"
         elif netto == 0:
             return "🤷 Wayne (0)"
         elif netto == -1:
-            return "😬 Damn (-1)"
+            return "🔴 Damn (-1)"
         elif netto == -2:
-            return "🤬 Fuck (-2)"
+            return "💀 Fuck (-2)"
         else:
-            return f"💥 Crashout ({netto})"
+            return f"🤬 Crashout ({netto})"
 
 
 if username:
