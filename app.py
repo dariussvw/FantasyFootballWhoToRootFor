@@ -162,10 +162,13 @@ if username:
                 ]
 
                 if game_players:
-                    # Matchup-Titel hervorheben
-                    header_label = f"🏈 **{away} @ {home}** | **{game['score']}** ({game['status']})"
+                    # Matchup-Überschrift deutlich größer gestaltet
+                    header_label = f"🏈 {away} @ {home} | {game['score']} ({game['status']})"
                     
                     with st.expander(header_label, expanded=True):
+                        st.markdown(f"# **{away} @ {home}**")
+                        st.markdown(f"**Score / Status:** {game['score']} ({game['status']})")
+                        st.write("")
                         
                         # Sortieren: Spieler mit höchstem Netto-Wert zuerst
                         game_players.sort(key=lambda p: (len(p["my_leagues"]) - len(p["opp_leagues"])), reverse=True)
@@ -192,16 +195,16 @@ if username:
 
                             # Karte pro Spieler
                             with st.container(border=True):
-                                # Spieler & Auswirkung auf exakt gleicher Überschriften-Ebene (###)
-                                st.markdown(f"### 👤 **{p['name']}** ({p['pos']}-{p['team']})")
-                                st.markdown(f"### {status}")
+                                # Spieler & Auswirkung in moderater, übersichtlicher Größe
+                                st.markdown(f"**Spieler:** {p['name']} ({p['pos']}-{p['team']})")
+                                st.markdown(f"**Auswirkung:** {status}")
                                 
                                 my_l_str = ", ".join(p["my_leagues"]) if p["my_leagues"] else "–"
                                 opp_l_str = ", ".join(p["opp_leagues"]) if p["opp_leagues"] else "–"
                                 
-                                # Teams/Ligen optisch zurückhaltender darunter
-                                st.markdown(f"🟢 **Mein Team:** {my_l_str}")
-                                st.markdown(f"🔴 **Gegner:** {opp_l_str}")
+                                # Teams und Gegner ohne Emojis
+                                st.markdown(f"**Mein Team:** {my_l_str}")
+                                st.markdown(f"**Gegner:** {opp_l_str}")
 
             st.divider()
             st.caption("💡 **Tipp zum Speichern & Teilen:**")
