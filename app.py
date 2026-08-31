@@ -98,7 +98,6 @@ username = st.text_input(labels["username"], value=initial_username)
 if username:
     st.query_params["user"] = username
 
-# Session State Steuerung: 'all', 'none', oder 'live_only'
 if "expand_mode" not in st.session_state:
     st.session_state.expand_mode = "all"
 
@@ -377,7 +376,6 @@ if username:
 
             st.write(f"### {labels['week_overview'].format(week=current_week)}")
 
-            # Steuerungselemente: Buttons nebeneinander
             col1, col2 = st.columns(2)
             with col1:
                 btn_all_label = (
@@ -401,13 +399,11 @@ if username:
             if not games:
                 st.warning(labels["no_live_games"])
 
-            found_any_player = False
-            expander_index = 0
-
+            # 1. Nur relevante Spiele filtern & Netto berechnen
+            relevant_games = []
             for game in games:
                 home = game["home_team"]
                 away = game["away_team"]
-
                 game_players = [
                     p
                     for p in player_data.values()
@@ -415,50 +411,62 @@ if username:
                 ]
 
                 if game_players:
-                    found_any_player = True
-                    expander_index += 1
-
-                    # Gesamt-Netto für das NFL-Spiel berechnen
                     game_netto = sum(
                         len(p["my_leagues"]) - len(p["opp_leagues"])
                         for p in game_players
                     )
+                    relevant_games.append({
+                        "game": game,
+                        "players": game_players,
+                        "netto": game_netto,
+                    })
 
-                    # Farben festlegen
-                    if game_netto >= 3:
-                        bg_color = "#d4edda"
-                        border_color = "#c3e6cb"
-                    elif game_netto in [1, 2]:
-                        bg_color = "#e8f5e9"
-                        border_color = "#a5d6a7"
-                    elif game_netto in [-1, -2]:
-                        bg_color = "#ffebee"
-                        border_color = "#ef9a9a"
-                    elif game_netto <= -3:
-                        bg_color = "#f8d7da"
-                        border_color = "#f5c6cb"
-                    else:
-                        bg_color = "transparent"
-                        border_color = "transparent"
+            # 2. Dynamisches CSS für ALLE Expander auf einmal bauen
+            css_rules = []
+            for idx, item in enumerate(relevant_games, start=1):
+                netto = item["netto"]
 
-                    # Dynamisches CSS direkt für diesen Expander injizieren
-                    if bg_color != "transparent":
-                        st.markdown(
-                            f"""
-                            <style>
-                            div[data-testid="stExpander"]:nth-of-type({expander_index}) details {{
-                                background-color: {bg_color} !important;
-                                border: 1px solid {border_color} !important;
-                                border-radius: 0.5rem;
-                            }}
-                            div[data-testid="stExpander"]:nth-of-type({expander_index}) details summary {{
-                                background-color: {bg_color} !important;
-                                border-radius: 0.5rem;
-                            }}
-                            </style>
-                        """,
-                            unsafe_allow_html=True,
-                        )
+                if netto >= 3:
+                    bg = "#d4edda"
+                    border = "#c3e6cb"
+                elif netto in [1, 2]:
+                    bg = "#e8f5e9"
+                    border = "#a5d6a7"
+                elif netto in [-1, -2]:
+                    bg = "#ffebee"
+                    border = "#ef9a9a"
+                elif netto <= -3:
+                    bg = "#f8d7da"
+                    border = "#f5c6cb"
+                else:
+                    bg = "#ffffff"
+                    border = "#e0e0e0"
+
+                css_rules.append(f"""
+                div[data-testid="stExpander"]:nth-of-type({idx}) details {{
+                    background-color: {bg} !important;
+                    border: 1px solid {border} !important;
+                    border-radius: 0.5rem;
+                }}
+                div[data-testid="stExpander"]:nth-of-type({idx}) details summary {{
+                    background-color: {bg} !important;
+                    border-radius: 0.5rem;
+                }}
+                """)
+
+            if css_rules:
+                st.markdown(
+                    f"<style>{''.join(css_rules)}</style>",
+                    unsafe_allow_html=True,
+                )
+
+            # 3. Expander rendern
+            if relevant_games:
+                for item in relevant_games:
+                    game = item["game"]
+                    game_players = item["players"]
+                    away = game["away_team"]
+                    home = game["home_team"]
 
                     header_label = f"🏈 {away} @ {home} | {game['score']} ({game['status']})"
 
@@ -510,8 +518,7 @@ if username:
                                 st.markdown(
                                     f"**{labels['opponent']}:** {opp_l_str}"
                                 )
-
-            if not found_any_player and player_data:
+            elif player_data:
                 st.info(labels["no_games_scheduled"])
 
             st.divider()
@@ -521,7 +528,7 @@ if username:
 else:
     st.info(labels["input_prompt"])
 
-# Auto-Refresh alle 60 Sekunden (Clientseitig via JS)
+# Auto-Refresh alle 60 Sekunden
 st.markdown(
     """
     <script>
