@@ -192,34 +192,34 @@ def get_nfl_schedule(week, season, is_german):
 def get_root_status(netto, is_german):
     if is_german:
         if netto >= 3:
-            return f"ABFEUERN (+{netto})"
+            return f"🔥 ABFEUERN (+{netto})"
         elif netto == 2:
-            return "JUBEL (+2)"
+            return "🙌 JUBEL (+2)"
         elif netto == 1:
-            return "GUTE (+1)"
+            return "👍 GUTE (+1)"
         elif netto == 0:
-            return "JUCKA (0)"
+            return "🤷 JUCKA (0)"
         elif netto == -1:
-            return "DAMN (-1)"
+            return "😬 DAMN (-1)"
         elif netto == -2:
-            return "FUCK (-2)"
+            return "🤬 FUCK (-2)"
         else:
-            return f"CRASHOUT ({netto})"
+            return f"💥 CRASHOUT ({netto})"
     else:
         if netto >= 3:
-            return f"Shoot! (+{netto})"
+            return f"🔥 Shoot! (+{netto})"
         elif netto == 2:
-            return "Root (+2)"
+            return "🙌 Root (+2)"
         elif netto == 1:
-            return "Nice (+1)"
+            return "👍 Nice (+1)"
         elif netto == 0:
-            return "Wayne (0)"
+            return "🤷 Wayne (0)"
         elif netto == -1:
-            return "Damn (-1)"
+            return "😬 Damn (-1)"
         elif netto == -2:
-            return "Fuck (-2)"
+            return "🤬 Fuck (-2)"
         else:
-            return f"Crashout ({netto})"
+            return f"💥 Crashout ({netto})"
 
 
 if username:
@@ -400,7 +400,6 @@ if username:
             if not games:
                 st.warning(labels["no_live_games"])
 
-            # Farbmaps für JavaScript-Zuweisung speichern
             color_map_js = {}
 
             relevant_games = []
@@ -432,7 +431,6 @@ if username:
                     away = game["away_team"]
                     home = game["home_team"]
 
-                    # Farbbestimmung basierend auf Netto
                     if netto >= 3:
                         bg_color = "#d4edda"
                         border_color = "#c3e6cb"
@@ -453,7 +451,6 @@ if username:
                         f"{away} @ {home} | {game['score']} ({game['status']})"
                     )
 
-                    # Speichere Farben für den JS-Injector
                     color_map_js[header_label] = (bg_color, border_color)
 
                     if st.session_state.expand_mode == "all":
@@ -505,7 +502,6 @@ if username:
                                     f"**{labels['opponent']}:** {opp_l_str}"
                                 )
 
-                # Dynamic JavaScript block targeting summary tags directly via iframe parent context
                 js_script = "<script>"
                 for title, (bg, border) in color_map_js.items():
                     escaped_title = title.replace("'", "\\'")
