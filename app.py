@@ -449,7 +449,7 @@ if username:
 
                 if game_players:
                     found_any_player = True
-                    
+
                     # Gesamt-Netto für das ganze NFL-Spiel berechnen
                     game_netto = sum(
                         len(p["my_leagues"]) - len(p["opp_leagues"])
@@ -457,16 +457,16 @@ if username:
                     )
 
                     # CSS-Klasse anhand der Farblogik bestimmen
-if game_netto >= 3:
-    expander_class = "expander-gruen"
-elif game_netto in [1, 2]:
-    expander_class = "expander-hell-gruen"
-elif game_netto in [-1, -2]:
-    expander_class = "expander-hell-rot"
-elif game_netto <= -3:
-    expander_class = "expander-rot"
-else:
-    expander_class = ""
+                    if game_netto >= 3:
+                        expander_class = "expander-gruen"
+                    elif game_netto in [1, 2]:
+                        expander_class = "expander-hell-gruen"
+                    elif game_netto in [-1, -2]:
+                        expander_class = "expander-hell-rot"
+                    elif game_netto <= -3:
+                        expander_class = "expander-rot"
+                    else:
+                        expander_class = ""
 
                     header_label = f"🏈 {away} @ {home} | {game['score']} ({game['status']}) [Netto: {game_netto:+d}]"
 
@@ -480,7 +480,10 @@ else:
                         is_expanded = True
 
                     # Umschließenden HTML-Container mit der Farborientierung setzen
-                    st.markdown(f'<div class="{expander_class}">', unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div class="{expander_class}">',
+                        unsafe_allow_html=True,
+                    )
                     with st.expander(header_label, expanded=is_expanded):
                         game_players.sort(
                             key=lambda p: (
