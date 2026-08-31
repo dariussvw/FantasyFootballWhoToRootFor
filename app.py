@@ -14,26 +14,34 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# STYLING & DESIGN (Nur Optik - keine Funktionalität geändert)
+# STYLING & DESIGN (Fix für Lesbarkeit im Light Mode)
 # ---------------------------------------------------------
 custom_css = """
 <style>
     /* Haupt-Hintergrund & Textfarbe */
     .stApp {
-        background: linear-gradient(135deg, #0e1117 0%, #161b22 100%);
-        color: #f0f6fc;
+        background: linear-gradient(135deg, #0e1117 0%, #161b22 100%) !important;
+        color: #f0f6fc !important;
     }
     
+    /* Erzwinge helle Schrift für ALLE Labels (Sprache, Inputs, Sidebar) */
+    label, p, span, div, .stWidgetLabel {
+        color: #f0f6fc !important;
+    }
+
     /* Haupt-Überschriften */
-    h1, h2, h3 {
+    h1, h2, h3, h4 {
         color: #58a6ff !important;
         font-weight: 800 !important;
     }
     
-    /* Sidebar Styling */
+    /* Sidebar Styling & Schriftfarbe */
     [data-testid="stSidebar"] {
         background-color: #161b22 !important;
         border-right: 1px solid #30363d;
+    }
+    [data-testid="stSidebar"] label, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2 {
+        color: #f0f6fc !important;
     }
 
     /* Input Felder (Textinputs, Radiobuttons) */
