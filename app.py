@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 
-st.set_page_config(page_title="Sleeper NFL Game Dashboard", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Sleeper NFL Game Monitor", layout="wide", initial_sidebar_state="collapsed")
 
 st.title("🏈 Sleeper Live NFL Game Monitor")
 
@@ -150,13 +150,19 @@ if username:
                             opp_cnt = len(p["opp_leagues"])
                             netto = my_cnt - opp_cnt
 
-                            if netto > 0:
-                                status = f"🟢 JUBELN (+{netto})"
-                            elif netto < 0:
-                                status = f"🔴 FLUCHEN ({netto})"
+                            # Neue Status-Logik
+                            if netto >= 2:
+                                status = f"🔥 JUBEL (+{netto})"
+                            elif netto == 1:
+                                status = "🟢 GUT (+1)"
+                            elif netto == -1:
+                                status = "🔴 SCHLECHT (-1)"
+                            elif netto <= -2:
+                                status = f"💥 KATASTROPHE ({netto})"
                             else:
-                                status = "⚪ NEUTRAL"
+                                status = "⚪ NEUTRAL (0)"
 
+                            # Exakt festgelegte Spaltenreihenfolge
                             table_data.append({
                                 "Spieler": f"{p['name']} ({p['pos']}-{p['team']})",
                                 "Mein Team": ", ".join(p["my_leagues"]) if p["my_leagues"] else "-",
@@ -164,4 +170,11 @@ if username:
                                 "Auswirkung": status
                             })
 
-                        st.dataframe(table_data, use_container_width=True, hide_index=True)
+                        # Spalten explizit sortieren & anzeigen
+                        column_order = ["Spieler", "Mein Team", "Gegner", "Auswirkung"]
+                        st.dataframe(
+                            table_data, 
+                            column_order=column_order,
+                            use_container_width=True, 
+                            hide_index=True
+                        )
