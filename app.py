@@ -10,13 +10,35 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Custom CSS für vergrößerte Matchup-Überschriften
+# Custom CSS für vergrößerte Matchup-Überschriften & farbige Expander
 st.markdown(
     """
     <style>
     div[data-testid="stExpander"] details summary p {
         font-size: 1.25rem !important;
         font-weight: bold !important;
+    }
+    
+    /* Farb-Klassen für die Expander-Hintergründe */
+    div.expander-gruen details {
+        background-color: #d4edda !important;
+        border: 1px solid #c3e6cb !important;
+        border-radius: 0.5rem;
+    }
+    div.expander-hell-gruen details {
+        background-color: #e8f5e9 !important;
+        border: 1px solid #a5d6a7 !important;
+        border-radius: 0.5rem;
+    }
+    div.expander-hell-rot details {
+        background-color: #ffebee !important;
+        border: 1px solid #ef9a9a !important;
+        border-radius: 0.5rem;
+    }
+    div.expander-rot details {
+        background-color: #f8d7da !important;
+        border: 1px solid #f5c6cb !important;
+        border-radius: 0.5rem;
     }
     </style>
 """,
@@ -225,277 +247,4 @@ def get_root_status(netto, is_german):
             return "🔥 Root (+2)"
         elif netto == 1:
             return "🟢 Nice (+1)"
-        elif netto == 0:
-            return "🤷 Wayne (0)"
-        elif netto == -1:
-            return "🔴 Damn (-1)"
-        elif netto == -2:
-            return "💀 Fuck (-2)"
-        else:
-            return f"🤬 Crashout ({netto})"
-
-
-if username:
-    with st.spinner(labels["loading"]):
-        all_players = get_nfl_players()
-        nfl_state = get_current_nfl_state()
-        current_week = nfl_state.get("week", 1)
-        season = nfl_state.get("season", "2026")
-
-        user_res = requests.get(
-            f"https://api.sleeper.app/v1/user/{username}"
-        ).json()
-
-        if not user_res or "user_id" not in user_res:
-            st.error(labels["user_not_found"].format(username=username))
-        else:
-            user_id = user_res["user_id"]
-            leagues = requests.get(
-                f"https://api.sleeper.app/v1/user/{user_id}/leagues/nfl/{season}"
-            ).json()
-
-            if not leagues:
-                st.warning(labels["no_leagues"].format(season=season))
-
-            player_data = {}
-
-            for league in leagues:
-                l_id = league["league_id"]
-                l_name = league["name"]
-
-                matchups = requests.get(
-                    f"https://api.sleeper.app/v1/league/{l_id}/matchups/{current_week}"
-                ).json()
-                rosters = requests.get(
-                    f"https://api.sleeper.app/v1/league/{l_id}/rosters"
-                ).json()
-
-                my_roster_id = next(
-                    (
-                        r.get("roster_id")
-                        for r in rosters
-                        if r.get("owner_id") == user_id
-                    ),
-                    None,
-                )
-                if not my_roster_id:
-                    continue
-
-                my_team_data = (
-                    next(
-                        (
-                            m
-                            for m in matchups
-                            if m and m.get("roster_id") == my_roster_id
-                        ),
-                        None,
-                    )
-                    if matchups
-                    else None
-                )
-
-                my_player_ids = []
-                if my_team_data and my_team_data.get("starters"):
-                    my_player_ids = [
-                        p
-                        for p in my_team_data.get("starters", [])
-                        if p and p != "0"
-                    ]
-                else:
-                    my_roster_obj = next(
-                        (
-                            r
-                            for r in rosters
-                            if r.get("roster_id") == my_roster_id
-                        ),
-                        None,
-                    )
-                    if my_roster_obj and my_roster_obj.get("players"):
-                        my_player_ids = my_roster_obj.get("players", [])
-
-                my_pts_dict = (
-                    my_team_data.get("players_points", {})
-                    if my_team_data
-                    else {}
-                )
-
-                for pid in my_player_ids:
-                    if pid not in player_data:
-                        p_info = all_players.get(pid, {})
-                        player_data[pid] = {
-                            "name": (
-                                f"{p_info.get('first_name', '')}"
-                                f" {p_info.get('last_name', pid)}"
-                            ),
-                            "pos": p_info.get("position", "DEF"),
-                            "team": p_info.get("team", "FA"),
-                            "my_leagues": [],
-                            "opp_leagues": [],
-                        }
-
-                    pts = my_pts_dict.get(pid, 0.0)
-                    pts_str = f"{pts:.1f}" if pts is not None else "0.0"
-                    player_data[pid]["my_leagues"].append(
-                        f"{l_name} ({pts_str} Pts)"
-                    )
-
-                if my_team_data:
-                    my_matchup_id = my_team_data.get("matchup_id")
-                    opp_team_data = next(
-                        (
-                            m
-                            for m in matchups
-                            if m
-                            and m.get("matchup_id") == my_matchup_id
-                            and m.get("roster_id") != my_roster_id
-                        ),
-                        None,
-                    )
-                    if opp_team_data:
-                        opp_pids = (
-                            opp_team_data.get("starters", [])
-                            if opp_team_data.get("starters")
-                            else opp_team_data.get("players", [])
-                        )
-                        opp_pts_dict = (
-                            opp_team_data.get("players_points", {})
-                            if opp_team_data
-                            else {}
-                        )
-
-                        for pid in opp_pids:
-                            if pid and pid != "0":
-                                if pid not in player_data:
-                                    p_info = all_players.get(pid, {})
-                                    player_data[pid] = {
-                                        "name": (
-                                            f"{p_info.get('first_name', '')}"
-                                            f" {p_info.get('last_name', pid)}"
-                                        ),
-                                        "pos": p_info.get("position", "DEF"),
-                                        "team": p_info.get("team", "FA"),
-                                        "my_leagues": [],
-                                        "opp_leagues": [],
-                                    }
-
-                                pts = opp_pts_dict.get(pid, 0.0)
-                                pts_str = (
-                                    f"{pts:.1f}" if pts is not None else "0.0"
-                                )
-                                player_data[pid]["opp_leagues"].append(
-                                    f"{l_name} ({pts_str} Pts)"
-                                )
-
-            games = get_nfl_schedule(current_week, season, is_de)
-
-            st.write(f"### {labels['week_overview'].format(week=current_week)}")
-
-            # Steuerungselemente: Buttons nebeneinander
-            col1, col2 = st.columns(2)
-            with col1:
-                btn_all_label = (
-                    labels["btn_collapse_all"]
-                    if st.session_state.expand_mode == "all"
-                    else labels["btn_expand_all"]
-                )
-                if st.button(btn_all_label, use_container_width=True):
-                    st.session_state.expand_mode = (
-                        "none"
-                        if st.session_state.expand_mode == "all"
-                        else "all"
-                    )
-                    st.rerun()
-
-            with col2:
-                if st.button(labels["btn_live_only"], use_container_width=True):
-                    st.session_state.expand_mode = "live_only"
-                    st.rerun()
-
-            if not games:
-                st.warning(labels["no_live_games"])
-
-            found_any_player = False
-            for game in games:
-                home = game["home_team"]
-                away = game["away_team"]
-
-                game_players = [
-                    p
-                    for p in player_data.values()
-                    if p["team"] in [home, away]
-                ]
-
-                if game_players:
-                    found_any_player = True
-                    header_label = f"🏈 {away} @ {home} | {game['score']} ({game['status']})"
-
-                    if st.session_state.expand_mode == "all":
-                        is_expanded = True
-                    elif st.session_state.expand_mode == "none":
-                        is_expanded = False
-                    elif st.session_state.expand_mode == "live_only":
-                        is_expanded = game["is_live"]
-                    else:
-                        is_expanded = True
-
-                    with st.expander(header_label, expanded=is_expanded):
-                        game_players.sort(
-                            key=lambda p: (
-                                len(p["my_leagues"]) - len(p["opp_leagues"])
-                            ),
-                            reverse=True,
-                        )
-
-                        for p in game_players:
-                            my_cnt = len(p["my_leagues"])
-                            opp_cnt = len(p["opp_leagues"])
-                            netto = my_cnt - opp_cnt
-
-                            status = get_root_status(netto, is_de)
-
-                            with st.container(border=True):
-                                st.markdown(
-                                    f"**{labels['player']}:** {p['name']}"
-                                    f" ({p['pos']}-{p['team']})"
-                                )
-                                st.markdown(f"**{labels['root']}:** {status}")
-
-                                my_l_str = (
-                                    ", ".join(p["my_leagues"])
-                                    if p["my_leagues"]
-                                    else "–"
-                                )
-                                opp_l_str = (
-                                    ", ".join(p["opp_leagues"])
-                                    if p["opp_leagues"]
-                                    else "–"
-                                )
-
-                                st.markdown(
-                                    f"**{labels['my_team']}:** {my_l_str}"
-                                )
-                                st.markdown(
-                                    f"**{labels['opponent']}:** {opp_l_str}"
-                                )
-
-            if not found_any_player and player_data:
-                st.info(labels["no_games_scheduled"])
-
-            st.divider()
-            st.caption(labels["tip_title"])
-            st.caption(labels["tip_desc"])
-
-else:
-    st.info(labels["input_prompt"])
-
-# Auto-Refresh alle 60 Sekunden (Clientseitig via JS, ohne Server-Thread zu blockieren)
-st.markdown(
-    """
-    <script>
-        setTimeout(function(){
-            window.location.reload();
-        }, 60000);
-    </script>
-""",
-    unsafe_allow_html=True,
-)
+        elif netto ==
