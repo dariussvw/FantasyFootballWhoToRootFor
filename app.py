@@ -652,6 +652,8 @@ if username:
                                 el.style.backgroundColor = '{bg}';
                                 el.style.border = '1px solid {border}';
                                 el.style.borderRadius = '8px';
+                                el.style.color = '#000000'; // Erzwingt schwarze Schriftfarbe (auch im Darkmode)
+                                el.style.fontWeight = 'bold'; // Macht das Matchup fettgedruckt
                             }}
                         }});
                     }} catch(e) {{ console.error(e); }}
