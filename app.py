@@ -399,9 +399,9 @@ if username:
             if not games:
                 st.warning(labels["no_live_games"])
 
-            # 1. Nur relevante Spiele filtern & Netto berechnen
-            relevant_games = []
-            for game in games:
+            found_any = False
+
+            for idx, game in enumerate(games):
                 home = game["home_team"]
                 away = game["away_team"]
                 game_players = [
@@ -411,62 +411,28 @@ if username:
                 ]
 
                 if game_players:
+                    found_any = True
                     game_netto = sum(
                         len(p["my_leagues"]) - len(p["opp_leagues"])
                         for p in game_players
                     )
-                    relevant_games.append({
-                        "game": game,
-                        "players": game_players,
-                        "netto": game_netto,
-                    })
 
-            # 2. Dynamisches CSS für ALLE Expander auf einmal bauen
-            css_rules = []
-            for idx, item in enumerate(relevant_games, start=1):
-                netto = item["netto"]
-
-                if netto >= 3:
-                    bg = "#d4edda"
-                    border = "#c3e6cb"
-                elif netto in [1, 2]:
-                    bg = "#e8f5e9"
-                    border = "#a5d6a7"
-                elif netto in [-1, -2]:
-                    bg = "#ffebee"
-                    border = "#ef9a9a"
-                elif netto <= -3:
-                    bg = "#f8d7da"
-                    border = "#f5c6cb"
-                else:
-                    bg = "#ffffff"
-                    border = "#e0e0e0"
-
-                css_rules.append(f"""
-                div[data-testid="stExpander"]:nth-of-type({idx}) details {{
-                    background-color: {bg} !important;
-                    border: 1px solid {border} !important;
-                    border-radius: 0.5rem;
-                }}
-                div[data-testid="stExpander"]:nth-of-type({idx}) details summary {{
-                    background-color: {bg} !important;
-                    border-radius: 0.5rem;
-                }}
-                """)
-
-            if css_rules:
-                st.markdown(
-                    f"<style>{''.join(css_rules)}</style>",
-                    unsafe_allow_html=True,
-                )
-
-            # 3. Expander rendern
-            if relevant_games:
-                for item in relevant_games:
-                    game = item["game"]
-                    game_players = item["players"]
-                    away = game["away_team"]
-                    home = game["home_team"]
+                    # Zuweisung der genauen Farbe basierend auf dem Netto-Wert des aktuellen Spiels
+                    if game_netto >= 3:
+                        bg = "#d4edda"
+                        border = "#c3e6cb"
+                    elif game_netto in [1, 2]:
+                        bg = "#e8f5e9"
+                        border = "#a5d6a7"
+                    elif game_netto in [-1, -2]:
+                        bg = "#ffebee"
+                        border = "#ef9a9a"
+                    elif game_netto <= -3:
+                        bg = "#f8d7da"
+                        border = "#f5c6cb"
+                    else:
+                        bg = "#ffffff"
+                        border = "#e0e0e0"
 
                     header_label = f"🏈 {away} @ {home} | {game['score']} ({game['status']})"
 
@@ -478,6 +444,27 @@ if username:
                         is_expanded = game["is_live"]
                     else:
                         is_expanded = True
+
+                    # Eindeutige Klasse pro Matchup-Container
+                    box_class = f"matchup-box-{game['game_id']}"
+
+                    st.markdown(
+                        f"""
+                        <style>
+                        .{box_class} div[data-testid="stExpander"] details {{
+                            background-color: {bg} !important;
+                            border: 1px solid {border} !important;
+                            border-radius: 0.5rem;
+                        }}
+                        .{box_class} div[data-testid="stExpander"] details summary {{
+                            background-color: {bg} !important;
+                            border-radius: 0.5rem;
+                        }}
+                        </style>
+                        <div class="{box_class}">
+                    """,
+                        unsafe_allow_html=True,
+                    )
 
                     with st.expander(header_label, expanded=is_expanded):
                         game_players.sort(
@@ -518,7 +505,10 @@ if username:
                                 st.markdown(
                                     f"**{labels['opponent']}:** {opp_l_str}"
                                 )
-            elif player_data:
+
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+            if not found_any and player_data:
                 st.info(labels["no_games_scheduled"])
 
             st.divider()
