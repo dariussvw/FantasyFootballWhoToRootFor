@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# STYLING & DESIGN (Fix für Matchup-Schriftfarbe)
+# STYLING & DESIGN (Fix für DE/EN & Top-Bar im Light Mode)
 # ---------------------------------------------------------
 custom_css = """
 <style>
@@ -24,9 +24,20 @@ custom_css = """
         color: #f0f6fc !important;
     }
     
+    /* Oberer Streamlit-Balken / Header auf dunkles Grau setzen */
+    header[data-testid="stHeader"] {
+        background-color: #161b22 !important;
+    }
+    
     /* Helle Schrift für allgemeine Labels (Sprache, Inputs, Sidebar) */
     .stApp label, .stApp .stWidgetLabel, [data-testid="stSidebar"] * {
         color: #f0f6fc !important;
+    }
+
+    /* Expliziter Fix für Radio-Button Optionen (wie DE / EN) */
+    div[data-testid="stRadio"] label p {
+        color: #f0f6fc !important;
+        font-weight: 600 !important;
     }
 
     /* MATCHUP-EXPANDER: Schrift IMMER schwarz & fett (übersteuert den Dark Mode) */
