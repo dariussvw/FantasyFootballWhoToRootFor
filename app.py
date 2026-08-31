@@ -105,8 +105,9 @@ username = st.text_input(labels["username"], value=initial_username)
 if username:
     st.query_params["user"] = username
 
+# Hier auf "none" gesetzt, damit beim Laden/Neu-Laden standardmäßig alles eingeklappt ist
 if "expand_mode" not in st.session_state:
-    st.session_state.expand_mode = "all"
+    st.session_state.expand_mode = "none"
 
 
 @st.cache_data(ttl=3600)
@@ -230,7 +231,6 @@ def get_root_status(netto, is_german):
 
 
 def normalize_name(name):
-    """Bereinigt Spielernamen für einen exakten Abgleich zwischen Sleeper und ESPN."""
     return (
         name.lower()
         .replace(".", "")
@@ -249,7 +249,6 @@ if username:
         current_week = nfl_state.get("week", 1)
         season = nfl_state.get("season", "2026")
 
-        # Erstelle ein Mapping von bereinigtem Namen auf die Sleeper Player ID
         name_to_sleeper_id = {}
         for pid, pdata in all_players.items():
             full_n = (
@@ -275,7 +274,7 @@ if username:
 
             player_data = {}
 
-            # --- 1. SLEEPER LIGEN VERARBEITEN ---
+            # 1. Sleeper Ligen
             for league in leagues:
                 l_id = league["league_id"]
                 l_name = league["name"]
@@ -403,7 +402,7 @@ if username:
                                     f"{l_name} ({pts_str} Pts)"
                                 )
 
-            # --- 2. ESPN LIGA NUR FÜR PUNKTE UND MATCHUPS NUNTZEN ---
+            # 2. ESPN Integration
             if espn_league_id and espn_team_name:
                 try:
                     kwargs = {
@@ -453,7 +452,6 @@ if username:
                                 else my_box.home_lineup
                             )
 
-                            # Eigene ESPN-Starter verarbeiten
                             for espn_player in my_lineup:
                                 if espn_player.slot_position != "BE":
                                     norm_name = normalize_name(espn_player.name)
@@ -482,7 +480,6 @@ if username:
                                             f"ESPN: {espn_league_name} ({pts_str} Pts)"
                                         )
 
-                            # Gegner-ESPN-Starter verarbeiten
                             for espn_player in opp_lineup:
                                 if espn_player.slot_position != "BE":
                                     norm_name = normalize_name(espn_player.name)
@@ -514,7 +511,7 @@ if username:
                 except Exception as e:
                     st.sidebar.error(f"Fehler bei ESPN: {e}")
 
-            # --- 3. NFL-SCHEDULE UND EXPANDER-DARSTELLUNG ---
+            # 3. NFL-Schedule und Darstellung
             games = get_nfl_schedule(current_week, season, is_de)
 
             st.write(f"### {labels['week_overview'].format(week=current_week)}")
@@ -522,15 +519,15 @@ if username:
             col1, col2 = st.columns(2)
             with col1:
                 btn_all_label = (
-                    labels["btn_collapse_all"]
-                    if st.session_state.expand_mode == "all"
-                    else labels["btn_expand_all"]
+                    labels["btn_expand_all"]
+                    if st.session_state.expand_mode == "none"
+                    else labels["btn_collapse_all"]
                 )
                 if st.button(btn_all_label, use_container_width=True):
                     st.session_state.expand_mode = (
-                        "none"
-                        if st.session_state.expand_mode == "all"
-                        else "all"
+                        "all"
+                        if st.session_state.expand_mode == "none"
+                        else "none"
                     )
                     st.rerun()
 
@@ -602,7 +599,7 @@ if username:
                     elif st.session_state.expand_mode == "live_only":
                         is_expanded = game["is_live"]
                     else:
-                        is_expanded = True
+                        is_expanded = False
 
                     with st.expander(header_label, expanded=is_expanded):
                         game_players.sort(
