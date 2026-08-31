@@ -191,34 +191,34 @@ def get_nfl_schedule(week, season, is_german):
 def get_root_status(netto, is_german):
     if is_german:
         if netto >= 3:
-            return f"💦 ABFEUERN (+{netto})"
+            return f"ABFEUERN (+{netto})"
         elif netto == 2:
-            return "🔥 JUBEL (+2)"
+            return "JUBEL (+2)"
         elif netto == 1:
-            return "🟢 GUTE (+1)"
+            return "GUTE (+1)"
         elif netto == 0:
-            return "🤷 JUCKA (0)"
+            return "JUCKA (0)"
         elif netto == -1:
-            return "🔴 DAMN (-1)"
+            return "DAMN (-1)"
         elif netto == -2:
-            return "💀 FUCK (-2)"
+            return "FUCK (-2)"
         else:
-            return f"🤬 CRASHOUT ({netto})"
+            return f"CRASHOUT ({netto})"
     else:
         if netto >= 3:
-            return f"💦 Shoot! (+{netto})"
+            return f"Shoot! (+{netto})"
         elif netto == 2:
-            return "🔥 Root (+2)"
+            return "Root (+2)"
         elif netto == 1:
-            return "🟢 Nice (+1)"
+            return "Nice (+1)"
         elif netto == 0:
-            return "🤷 Wayne (0)"
+            return "Wayne (0)"
         elif netto == -1:
-            return "🔴 Damn (-1)"
+            return "Damn (-1)"
         elif netto == -2:
-            return "💀 Fuck (-2)"
+            return "Fuck (-2)"
         else:
-            return f"🤬 Crashout ({netto})"
+            return f"Crashout ({netto})"
 
 
 if username:
@@ -417,32 +417,26 @@ if username:
                         for p in game_players
                     )
 
-                    # Zuweisung der Farbe basierend auf dem GESAMT-Netto des Spiels
+                    # Farbbestimmung basierend auf dem GESAMT-Netto des Matchups
                     if game_netto >= 3:
                         bg_color = "#d4edda"
                         border_color = "#c3e6cb"
-                        badge_emoji = "💦"
                     elif game_netto in [1, 2]:
                         bg_color = "#e8f5e9"
                         border_color = "#a5d6a7"
-                        badge_emoji = "🟢"
                     elif game_netto in [-1, -2]:
                         bg_color = "#ffebee"
                         border_color = "#ef9a9a"
-                        badge_emoji = "🔴"
                     elif game_netto <= -3:
                         bg_color = "#f8d7da"
                         border_color = "#f5c6cb"
-                        badge_emoji = "💀"
                     else:
                         bg_color = "#f8f9fa"
                         border_color = "#e0e0e0"
-                        badge_emoji = "🤷"
 
-                    netto_str = (
-                        f"+{game_netto}" if game_netto > 0 else f"{game_netto}"
+                    header_label = (
+                        f"{away} @ {home} | {game['score']} ({game['status']})"
                     )
-                    header_label = f"{badge_emoji} [Netto: {netto_str}] 🏈 {away} @ {home} | {game['score']} ({game['status']})"
 
                     if st.session_state.expand_mode == "all":
                         is_expanded = True
@@ -453,22 +447,25 @@ if username:
                     else:
                         is_expanded = True
 
-                    # Injiziere CSS direkt vor jedem Expander
+                    # Eindeutige Container-ID für saubere CSS-Zuweisung
+                    game_key = f"game-box-{game['game_id']}"
+
                     st.markdown(
                         f"""
                         <style>
-                        div[data-testid="stExpander"]:has(summary:contains("{away} @ {home}")) details {{
+                        div[{game_key}="true"] {{
                             background-color: {bg_color} !important;
                             border: 2px solid {border_color} !important;
-                            border-radius: 8px !important;
-                            margin-bottom: 12px;
+                            border-radius: 10px !important;
+                            padding: 10px !important;
+                            margin-bottom: 15px !important;
                         }}
-                        div[data-testid="stExpander"]:has(summary:contains("{away} @ {home}")) details summary {{
-                            background-color: {bg_color} !important;
-                            border-radius: 6px !important;
+                        div[{game_key}="true"] details summary {{
+                            background-color: transparent !important;
                             font-weight: bold;
                         }}
                         </style>
+                        <div {game_key}="true">
                     """,
                         unsafe_allow_html=True,
                     )
@@ -512,6 +509,8 @@ if username:
                                 st.markdown(
                                     f"**{labels['opponent']}:** {opp_l_str}"
                                 )
+
+                    st.markdown("</div>", unsafe_allow_html=True)
 
             if not found_any and player_data:
                 st.info(labels["no_games_scheduled"])
