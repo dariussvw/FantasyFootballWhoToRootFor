@@ -22,7 +22,7 @@ st.title("🏈 Fantasy Football - Who to root for?")
 query_params = st.query_params
 
 # TRAGE HIER DEINEN ECHTEN SLEEPER-NAMEN EIN:
-DEFAULT_USER = "Schmitz"  # <-- Hier deinen Namen eintragen!
+DEFAULT_USER = "Schmitz"
 
 initial_username = query_params.get("user", DEFAULT_USER)
 username = st.text_input("Sleeper Username:", value=initial_username)
@@ -95,7 +95,7 @@ def get_nfl_schedule(week, season):
         return []
 
 if username and username != "DEIN_SLEEPER_USERNAME":
-    with st.spinner("Lade Kader- und Live-Daten..."):
+    with st.spinner("Lade Kader-, Live- und Punktestände..."):
         all_players = get_nfl_players()
         nfl_state = get_current_nfl_state()
         current_week = nfl_state.get("week", 1)
@@ -127,7 +127,6 @@ if username and username != "DEIN_SLEEPER_USERNAME":
                 
                 my_team_data = next((m for m in matchups if m and m.get("roster_id") == my_roster_id), None) if matchups else None
                 
-                # Wenn Starter da sind, nimm Starter, sonst den gesamten Roster
                 my_player_ids = []
                 if my_team_data and my_team_data.get("starters"):
                     my_player_ids = [p for p in my_team_data.get("starters", []) if p and p != "0"]
@@ -135,6 +134,9 @@ if username and username != "DEIN_SLEEPER_USERNAME":
                     my_roster_obj = next((r for r in rosters if r.get("roster_id") == my_roster_id), None)
                     if my_roster_obj and my_roster_obj.get("players"):
                         my_player_ids = my_roster_obj.get("players", [])
+
+                # Punkte-Dictionary aus dem Matchup holen
+                my_pts_dict = my_team_data.get("players_points", {}) if my_team_data else {}
 
                 for pid in my_player_ids:
                     if pid not in player_data:
@@ -146,7 +148,10 @@ if username and username != "DEIN_SLEEPER_USERNAME":
                             "my_leagues": [],
                             "opp_leagues": []
                         }
-                    player_data[pid]["my_leagues"].append(l_name)
+                    
+                    pts = my_pts_dict.get(pid, 0.0)
+                    pts_str = f"{pts:.1f}" if pts is not None else "0.0"
+                    player_data[pid]["my_leagues"].append(f"{l_name} ({pts_str} Pts)")
 
                 # Gegner-Spieler erfassen
                 if my_team_data:
@@ -154,6 +159,8 @@ if username and username != "DEIN_SLEEPER_USERNAME":
                     opp_team_data = next((m for m in matchups if m and m.get("matchup_id") == my_matchup_id and m.get("roster_id") != my_roster_id), None)
                     if opp_team_data:
                         opp_pids = opp_team_data.get("starters", []) if opp_team_data.get("starters") else opp_team_data.get("players", [])
+                        opp_pts_dict = opp_team_data.get("players_points", {}) if opp_team_data else {}
+
                         for pid in opp_pids:
                             if pid and pid != "0":
                                 if pid not in player_data:
@@ -165,7 +172,10 @@ if username and username != "DEIN_SLEEPER_USERNAME":
                                         "my_leagues": [],
                                         "opp_leagues": []
                                     }
-                                player_data[pid]["opp_leagues"].append(l_name)
+                                
+                                pts = opp_pts_dict.get(pid, 0.0)
+                                pts_str = f"{pts:.1f}" if pts is not None else "0.0"
+                                player_data[pid]["opp_leagues"].append(f"{l_name} ({pts_str} Pts)")
 
             games = get_nfl_schedule(current_week, season)
 
