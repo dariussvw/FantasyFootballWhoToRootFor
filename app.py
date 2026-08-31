@@ -62,16 +62,22 @@ if "expand_mode" not in st.session_state:
 
 @st.cache_data(ttl=3600)
 def get_nfl_players():
-    res = requests.get("https://api.sleeper.app/v1/players/nfl")
-    if res.status_code == 200:
-        return res.json()
+    try:
+        res = requests.get("https://api.sleeper.app/v1/players/nfl", timeout=15)
+        if res.status_code == 200:
+            return res.json()
+    except requests.RequestException:
+        pass
     return {}
 
 @st.cache_data(ttl=30)
 def get_current_nfl_state():
-    res = requests.get("https://api.sleeper.app/v1/state/nfl")
-    if res.status_code == 200:
-        return res.json()
+    try:
+        res = requests.get("https://api.sleeper.app/v1/state/nfl", timeout=10)
+        if res.status_code == 200:
+            return res.json()
+    except requests.RequestException:
+        pass
     return {"week": 1, "season": "2026"}
 
 # --- Gecachte, fehlertolerante Sleeper-Calls für die User-spezifischen Daten ---
@@ -135,7 +141,7 @@ def format_status_to_cet(status_detail, date_str):
 def get_nfl_schedule(week, season):
     try:
         url = f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates={season}&week={week}"
-        res = requests.get(url).json()
+        res = requests.get(url, timeout=10).json()
         games = []
         for event in res.get("events", []):
             competition = event["competitions"][0]
