@@ -2,7 +2,6 @@ import streamlit as st
 import requests
 from datetime import datetime
 import zoneinfo
-import time
 
 st.set_page_config(page_title="Fantasy Football - Who to root for?", layout="wide", initial_sidebar_state="collapsed")
 
@@ -18,7 +17,6 @@ st.markdown("""
 
 # 1. Sprache wählen
 lang = st.radio("Language / Sprache:", options=["DE", "EN"], horizontal=True, index=0)
-
 is_de = (lang == "DE")
 
 # Wörterbuch für Sprachausgaben
@@ -29,8 +27,8 @@ labels = {
     "btn_collapse_all": "📁 Alle zuklappen" if is_de else "📁 Collapse All",
     "btn_expand_all": "📂 Alle aufklappen" if is_de else "📂 Expand All",
     "btn_live_only": "🔴 Nur Live-Spiele aufklappen" if is_de else "🔴 Expand Live Games Only",
-    "user_not_found": f"Sleeper-User {{username}} konnte nicht gefunden werden." if is_de else f"Sleeper user '{{username}}' could not be found.",
-    "no_leagues": f"Keine Ligen für die Saison {{season}} gefunden." if is_de else f"No leagues found for the {{season}} season.",
+    "user_not_found": "Sleeper-User '{username}' konnte nicht gefunden werden." if is_de else "Sleeper user '{username}' could not be found.",
+    "no_leagues": "Keine Ligen für die Saison {season} gefunden." if is_de else "No leagues found for the {season} season.",
     "no_live_games": "Keine Live-Spiele für diese Woche gefunden." if is_de else "No live games found for this week.",
     "loading": "Lade Kader-, Live- und Punktestände..." if is_de else "Loading rosters, live scores, and stats...",
     "player": "Spieler" if is_de else "Player",
@@ -47,7 +45,6 @@ st.title(labels["title"])
 
 # Username ermitteln
 query_params = st.query_params
-
 DEFAULT_USER = "Schmitz"
 
 initial_username = query_params.get("user", DEFAULT_USER)
@@ -67,28 +64,28 @@ def get_nfl_players():
         return res.json()
     return {}
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=60)
 def get_current_nfl_state():
     res = requests.get("https://api.sleeper.app/v1/state/nfl")
     if res.status_code == 200:
         return res.json()
     return {"week": 1, "season": "2026"}
 
-def format_status_to_cet(status_detail, date_str):
+def format_status_to_cet(status_detail, date_str, is_german):
     try:
         utc_dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
         cet_dt = utc_dt.astimezone(zoneinfo.ZoneInfo("Europe/Berlin"))
         
-        if "STATUS_SCHEDULED" in status_detail or "PM" in status_detail or "AM" in status_detail or "EDT" in status_detail or "EST" in status_detail:
-            weekdays = ["Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So."] if is_de else ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        if any(keyword in status_detail for keyword in ["STATUS_SCHEDULED", "PM", "AM", "EDT", "EST"]):
+            weekdays = ["Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So."] if is_german else ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
             day_name = weekdays[cet_dt.weekday()]
-            return f"{day_name} {cet_dt.strftime('%H:%M')} Uhr" if is_de else f"{day_name} {cet_dt.strftime('%H:%M')}"
+            return f"{day_name} {cet_dt.strftime('%H:%M')} Uhr" if is_german else f"{day_name} {cet_dt.strftime('%H:%M')}"
         return status_detail
     except Exception:
         return status_detail
 
-@st.cache_data(ttl=30)
-def get_nfl_schedule(week, season):
+@st.cache_data(ttl=60)
+def get_nfl_schedule(week, season, is_german):
     try:
         url = f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates={season}&week={week}"
         res = requests.get(url).json()
@@ -104,11 +101,10 @@ def get_nfl_schedule(week, season):
             raw_type = event["status"]["type"]["name"]
             date_str = event.get("date", "")
             
-            # Überprüfen, ob das Spiel gerade LIVE läuft
             is_live = raw_type == "STATUS_IN_PROGRESS" or ("STATUS_SCHEDULED" not in raw_type and "STATUS_FINAL" not in raw_type and raw_type != "STATUS_POSTPONED")
 
             if raw_type == "STATUS_SCHEDULED":
-                status = format_status_to_cet(raw_type, date_str)
+                status = format_status_to_cet(raw_type, date_str, is_german)
             else:
                 status = raw_status
 
@@ -160,7 +156,7 @@ def get_root_status(netto, is_german):
         else:
             return f"🤬 Crashout ({netto})"
 
-if username and username != "DEIN_SLEEPER_USERNAME":
+if username:
     with st.spinner(labels["loading"]):
         all_players = get_nfl_players()
         nfl_state = get_current_nfl_state()
@@ -241,7 +237,7 @@ if username and username != "DEIN_SLEEPER_USERNAME":
                                 pts_str = f"{pts:.1f}" if pts is not None else "0.0"
                                 player_data[pid]["opp_leagues"].append(f"{l_name} ({pts_str} Pts)")
 
-            games = get_nfl_schedule(current_week, season)
+            games = get_nfl_schedule(current_week, season, is_de)
 
             st.write(f"### {labels['week_overview'].format(week=current_week)}")
 
@@ -313,6 +309,3 @@ if username and username != "DEIN_SLEEPER_USERNAME":
 
 else:
     st.info(labels["input_prompt"])
-
-time.sleep(30)
-st.rerun()
