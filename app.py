@@ -15,7 +15,6 @@ st.set_page_config(
     page_title="Sleeper Rooting Dashboard", page_icon="🏈", layout="wide"
 )
 
-# Automatische Erkennung der System-Zeitzone
 try:
     LOCAL_TZ = get_localzone()
 except Exception:
@@ -27,10 +26,6 @@ except Exception:
 # ==========================================
 @st.cache_data(ttl=86400, show_spinner="Lade NFL-Spielerdatenbank...")
 def get_optimized_players_db() -> Dict[str, Dict[str, str]]:
-    """Lädt die Sleeper-Spielerdatenbank und reduziert sie auf minimale Attribute,
-
-    um den RAM-Verbrauch extrem gering zu halten.
-    """
     url = "https://api.sleeper.app/v1/players/nfl"
     response = requests.get(url)
     if response.status_code != 200:
@@ -40,7 +35,6 @@ def get_optimized_players_db() -> Dict[str, Dict[str, str]]:
     optimized_db = {}
 
     for player_id, info in raw_data.items():
-        # Nur relevante Positions- und Namensdaten extrahieren
         pos = info.get("position")
         if pos in ["QB", "RB", "WR", "TE", "K", "DEF"]:
             first_name = info.get("first_name", "")
@@ -70,28 +64,28 @@ async def fetch_json(session: aiohttp.ClientSession, url: str) -> dict:
     return {}
 
 
-async def fetch_all_sleeper_data(username: str, season: str) -> Tuple[dict, list, list]:
+async def fetch_all_sleeper_data(
+    username: str, season: str
+) -> Tuple[dict, list, list, str]:
     async with aiohttp.ClientSession() as session:
-        # 1. User ID holen
         user_url = f"https://api.sleeper.app/v1/user/{username}"
         user_data = await fetch_json(session, user_url)
         if not user_data or "user_id" not in user_data:
-            return {}, [], []
+            return {}, [], [], ""
 
         user_id = user_data["user_id"]
 
-        # 2. Ligen des Users holen
         leagues_url = f"https://api.sleeper.app/v1/user/{user_id}/leagues/nfl/{season}"
         leagues = await fetch_json(session, leagues_url)
         if not isinstance(leagues, list):
-            return user_data, [], []
+            return user_data, [], [], user_id
 
-        # 3. Paralleler Abruf aller Rosters und aktuellen Matchups aller Ligen
         matchup_tasks = []
         roster_tasks = []
+        user_tasks = []
+
         for league in leagues:
             l_id = league["league_id"]
-            # Aktuelle Woche aus der Liga holen oder Standard 1
             current_week = league.get("settings", {}).get("leg", 1)
 
             roster_tasks.append(
@@ -105,14 +99,20 @@ async def fetch_all_sleeper_data(username: str, season: str) -> Tuple[dict, list
                     f"https://api.sleeper.app/v1/league/{l_id}/matchups/{current_week}",
                 )
             )
+            user_tasks.append(
+                fetch_json(
+                    session, f"https://api.sleeper.app/v1/league/{l_id}/users"
+                )
+            )
 
         rosters_results = await asyncio.gather(*roster_tasks)
         matchups_results = await asyncio.gather(*matchup_tasks)
+        users_results = await asyncio.gather(*user_tasks)
 
-        # Zuordnung zu den Ligen herstellen
         for idx, league in enumerate(leagues):
             league["_rosters"] = rosters_results[idx]
             league["_matchups"] = matchups_results[idx]
+            league["_users"] = users_results[idx]
 
         return user_data, leagues, user_id
 
@@ -121,7 +121,6 @@ async def fetch_all_sleeper_data(username: str, season: str) -> Tuple[dict, list
 # 4. ESPN RED ZONE & POSSESSION TRACKER
 # ==========================================
 def get_espn_live_tracker() -> Dict[str, dict]:
-    """Holt die Live-Spieldaten inklusive Red Zone & Ballbesitz von ESPN."""
     url = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
     try:
         res = requests.get(url, timeout=5)
@@ -135,11 +134,9 @@ def get_espn_live_tracker() -> Dict[str, dict]:
             status = event.get("status", {})
             situation = competition.get("situation", {})
 
-            # Possession & Redzone Status
             possession_team_id = situation.get("possession")
             is_redzone = situation.get("isRedZone", False)
 
-            # Details zu Heim- und Auswärtsteam
             teams_info = {}
             for competitor in competition.get("competitors", []):
                 team_abbr = competitor.get("team", {}).get("abbreviation")
@@ -153,12 +150,10 @@ def get_espn_live_tracker() -> Dict[str, dict]:
                     "redzone": has_possession and is_redzone,
                 }
 
-            # Zeit- / Quarter-Status
             clock = status.get("displayClock", "0:00")
             period = status.get("period", 0)
-            state = status.get("type", {}).get("state", "pre")  # pre, in, post
+            state = status.get("type", {}).get("state", "pre")
 
-            # Startzeit in lokaler Zeitzone formatieren
             utc_date_str = event.get("date")
             formatted_time = ""
             if utc_date_str:
@@ -191,7 +186,6 @@ def main():
     st.title("🏈 Sleeper Root-Score & Live Tracker")
     st.caption(f"System-Zeitzone erkannt: **{LOCAL_TZ}**")
 
-    # Sidebar Config
     st.sidebar.header("Einstellungen")
     username = st.sidebar.text_input("Sleeper Username", value="")
     season = st.sidebar.text_input("Saison", value="2026")
@@ -202,10 +196,8 @@ def main():
         )
         return
 
-    # 1. Spielerdatenbank laden (optimiert im Cache)
     players_db = get_optimized_players_db()
 
-    # 2. Daten asynchron laden
     with st.spinner("Lade Liga- und Matchupdaten..."):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -219,17 +211,23 @@ def main():
         )
         return
 
-    # 3. ESPN Live Tracker laden
     espn_status = get_espn_live_tracker()
 
-    # 4. Root-Score-Berechnung
-    player_scores = {}  # {player_id: {"score": int, "for": [], "against": []}}
+    # Data Containers
+    player_scores = {}
+    league_matchup_views = []
 
     for league in leagues:
         rosters = league.get("_rosters", [])
         matchups = league.get("_matchups", [])
+        users = league.get("_users", [])
 
-        # Eigenen Roster & Matchup finden
+        user_dict = {u.get("user_id"): u.get("display_name") for u in users}
+        roster_to_owner = {
+            r.get("roster_id"): user_dict.get(r.get("owner_id"), "Unbekannt")
+            for r in rosters
+        }
+
         my_roster = next(
             (r for r in rosters if r.get("owner_id") == user_id), None
         )
@@ -257,7 +255,25 @@ def main():
         my_starters = set(my_matchup.get("starters") or [])
         opp_starters = set(opp_matchup.get("starters") or []) if opp_matchup else set()
 
-        # Eigene Starter -> Pro (+1)
+        opp_owner_name = (
+            roster_to_owner.get(opp_matchup.get("roster_id"), "Gegner")
+            if opp_matchup
+            else "N/A"
+        )
+        my_pts = my_matchup.get("points", 0.0)
+        opp_pts = opp_matchup.get("points", 0.0) if opp_matchup else 0.0
+
+        league_matchup_views.append(
+            {
+                "league_name": league.get("name"),
+                "my_pts": my_pts,
+                "opp_pts": opp_pts,
+                "opp_name": opp_owner_name,
+                "my_starters": my_starters,
+                "opp_starters": opp_starters,
+            }
+        )
+
         for pid in my_starters:
             if pid not in player_scores:
                 player_scores[pid] = {
@@ -268,7 +284,6 @@ def main():
             player_scores[pid]["score"] += 1
             player_scores[pid]["pro_leagues"].append(league.get("name"))
 
-        # Gegner-Starter -> Contra (-1)
         for pid in opp_starters:
             if pid not in player_scores:
                 player_scores[pid] = {
@@ -322,52 +337,90 @@ def main():
     st.divider()
 
     # ==========================================
-    # DETALLIERTE LISTE ALLER SPIELER MIT ESPN-LIVE TRACKER
+    # TAB-VIEW: MATCHUPS VS. SPIELER-SCORE
     # ==========================================
-    st.subheader("📋 Alle relevanten Spieler des Spieltags")
+    tab1, tab2 = st.tabs(["🏆 Liga Matchups", "📋 Alle Root-Scores & Live-State"])
 
-    for pid, data in sorted_players:
-        p_info = players_db.get(
-            pid, {"name": pid, "position": "DEF", "team": pid}
-        )
-        team = p_info["team"]
+    with tab1:
+        st.subheader("Deine Matchups nach Ligen")
+        for match in league_matchup_views:
+            diff = match["my_pts"] - match["opp_pts"]
+            status_badge = (
+                f"🟢 +{diff:.2f}"
+                if diff > 0
+                else (f"🔴 {diff:.2f}" if diff < 0 else "⚪ 0.00")
+            )
 
-        # ESPN-Live Info abgreifen
-        live_info = espn_status.get(team, {})
-        status_text = ""
+            with st.expander(
+                f"**{match['league_name']}** | Du: {match['my_pts']:.2f} vs. {match['opp_name']}: {match['opp_pts']:.2f} ({status_badge})"
+            ):
+                mc1, mc2 = st.columns(2)
+                with mc1:
+                    st.write("**Deine Aufstellung:**")
+                    for pid in match["my_starters"]:
+                        p_info = players_db.get(
+                            pid, {"name": pid, "position": "-", "team": "-"}
+                        )
+                        st.write(
+                            f"- {p_info['name']} ({p_info['position']} - {p_info['team']})"
+                        )
 
-        if live_info:
-            state = live_info.get("state")
-            if state == "in":
-                pos_str = " 🏈" if live_info.get("possession") else ""
-                rz_str = " 🚨 **RED ZONE**" if live_info.get("redzone") else ""
-                status_text = f"🟢 LIVE - Q{live_info.get('period')} {live_info.get('clock')}{pos_str}{rz_str}"
-            elif state == "post":
-                status_text = "🏁 FINAL"
+                with mc2:
+                    st.write(f"**Gegner ({match['opp_name']}):**")
+                    for pid in match["opp_starters"]:
+                        p_info = players_db.get(
+                            pid, {"name": pid, "position": "-", "team": "-"}
+                        )
+                        st.write(
+                            f"- {p_info['name']} ({p_info['position']} - {p_info['team']})"
+                        )
+
+    with tab2:
+        st.subheader("Alle Spieler nach Root-Score")
+
+        for pid, data in sorted_players:
+            p_info = players_db.get(
+                pid, {"name": pid, "position": "DEF", "team": pid}
+            )
+            team = p_info["team"]
+
+            live_info = espn_status.get(team, {})
+            status_text = ""
+
+            if live_info:
+                state = live_info.get("state")
+                if state == "in":
+                    pos_str = " 🏈" if live_info.get("possession") else ""
+                    rz_str = (
+                        " 🚨 **RED ZONE**" if live_info.get("redzone") else ""
+                    )
+                    status_text = f"🟢 LIVE - Q{live_info.get('period')} {live_info.get('clock')}{pos_str}{rz_str}"
+                elif state == "post":
+                    status_text = "🏁 FINAL"
+                else:
+                    status_text = f"⏰ {live_info.get('start_time', 'Demnächst')}"
             else:
-                status_text = f"⏰ {live_info.get('start_time', 'Demnächst')}"
-        else:
-            status_text = "⏰ Keines der ESPN-Spiele zugeordnet"
+                status_text = "⏰ Kein ESPN Live-Spiel"
 
-        score = data["score"]
-        score_badge = (
-            f"🟢 **+{score}**"
-            if score > 0
-            else (f"🔴 **{score}**" if score < 0 else "⚪ **0**")
-        )
+            score = data["score"]
+            score_badge = (
+                f"🟢 **+{score}**"
+                if score > 0
+                else (f"🔴 **{score}**" if score < 0 else "⚪ **0**")
+            )
 
-        with st.expander(
-            f"{p_info['name']} ({p_info['position']} - {team}) | Root-Score: {score_badge} | {status_text}"
-        ):
-            c1, c2 = st.columns(2)
-            with c1:
-                st.write("**Dafür gestartet in:**")
-                for l in data["pro_leagues"]:
-                    st.write(f"- {l}")
-            with c2:
-                st.write("**Dagegen gestartet in:**")
-                for l in data["con_leagues"]:
-                    st.write(f"- {l}")
+            with st.expander(
+                f"{p_info['name']} ({p_info['position']} - {team}) | Root-Score: {score_badge} | {status_text}"
+            ):
+                sc1, sc2 = st.columns(2)
+                with sc1:
+                    st.write("**Dafür gestartet in:**")
+                    for l in data["pro_leagues"]:
+                        st.write(f"- {l}")
+                with sc2:
+                    st.write("**Dagegen gestartet in:**")
+                    for l in data["con_leagues"]:
+                        st.write(f"- {l}")
 
 
 if __name__ == "__main__":
