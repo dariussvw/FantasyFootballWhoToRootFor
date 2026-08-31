@@ -10,35 +10,51 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Custom CSS für vergrößerte Matchup-Überschriften & farbige Expander
+# Custom CSS für vergrößerte Matchup-Überschriften & erzwungene Expander-Färbung
 st.markdown(
     """
     <style>
+    /* Basis-Styling für Expander-Überschriften */
     div[data-testid="stExpander"] details summary p {
         font-size: 1.25rem !important;
         font-weight: bold !important;
     }
-    
-    /* Farb-Klassen für die Expander-Hintergründe */
-    div.expander-gruen details {
+
+    /* Farborientierte Hintergründe basierend auf dem data-netto Attribut */
+    div[data-netto="gruen"] details {
         background-color: #d4edda !important;
         border: 1px solid #c3e6cb !important;
         border-radius: 0.5rem;
     }
-    div.expander-hell-gruen details {
+    div[data-netto="gruen"] details summary {
+        background-color: #d4edda !important;
+    }
+
+    div[data-netto="hell-gruen"] details {
         background-color: #e8f5e9 !important;
         border: 1px solid #a5d6a7 !important;
         border-radius: 0.5rem;
     }
-    div.expander-hell-rot details {
+    div[data-netto="hell-gruen"] details summary {
+        background-color: #e8f5e9 !important;
+    }
+
+    div[data-netto="hell-rot"] details {
         background-color: #ffebee !important;
         border: 1px solid #ef9a9a !important;
         border-radius: 0.5rem;
     }
-    div.expander-rot details {
+    div[data-netto="hell-rot"] details summary {
+        background-color: #ffebee !important;
+    }
+
+    div[data-netto="rot"] details {
         background-color: #f8d7da !important;
         border: 1px solid #f5c6cb !important;
         border-radius: 0.5rem;
+    }
+    div[data-netto="rot"] details summary {
+        background-color: #f8d7da !important;
     }
     </style>
 """,
@@ -450,25 +466,26 @@ if username:
                 if game_players:
                     found_any_player = True
 
-                    # Gesamt-Netto für das ganze NFL-Spiel berechnen
+                    # Gesamt-Netto für das NFL-Spiel berechnen
                     game_netto = sum(
                         len(p["my_leagues"]) - len(p["opp_leagues"])
                         for p in game_players
                     )
 
-                    # CSS-Klasse anhand der Farblogik bestimmen
+                    # Attribut für das CSS-Matching bestimmen
                     if game_netto >= 3:
-                        expander_class = "expander-gruen"
+                        netto_attr = "gruen"
                     elif game_netto in [1, 2]:
-                        expander_class = "expander-hell-gruen"
+                        netto_attr = "hell-gruen"
                     elif game_netto in [-1, -2]:
-                        expander_class = "expander-hell-rot"
+                        netto_attr = "hell-rot"
                     elif game_netto <= -3:
-                        expander_class = "expander-rot"
+                        netto_attr = "rot"
                     else:
-                        expander_class = ""
+                        netto_attr = "neutral"
 
-                    header_label = f"🏈 {away} @ {home} | {game['score']} ({game['status']}) [Netto: {game_netto:+d}]"
+                    # Header ohne [Netto: X] Text
+                    header_label = f"🏈 {away} @ {home} | {game['score']} ({game['status']})"
 
                     if st.session_state.expand_mode == "all":
                         is_expanded = True
@@ -479,9 +496,9 @@ if username:
                     else:
                         is_expanded = True
 
-                    # Umschließenden HTML-Container mit der Farborientierung setzen
+                    # HTML-Wrapper mit data-netto Attribut für gezieltes CSS-Styling
                     st.markdown(
-                        f'<div class="{expander_class}">',
+                        f'<div data-netto="{netto_attr}">',
                         unsafe_allow_html=True,
                     )
                     with st.expander(header_label, expanded=is_expanded):
