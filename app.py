@@ -401,7 +401,7 @@ if username:
 
             found_any = False
 
-            for idx, game in enumerate(games):
+            for game in games:
                 home = game["home_team"]
                 away = game["away_team"]
                 game_players = [
@@ -417,24 +417,32 @@ if username:
                         for p in game_players
                     )
 
-                    # Zuweisung der genauen Farbe basierend auf dem Netto-Wert des aktuellen Spiels
+                    # Zuweisung der Farbe basierend auf dem GESAMT-Netto des Spiels
                     if game_netto >= 3:
-                        bg = "#d4edda"
-                        border = "#c3e6cb"
+                        bg_color = "#d4edda"
+                        border_color = "#c3e6cb"
+                        badge_emoji = "💦"
                     elif game_netto in [1, 2]:
-                        bg = "#e8f5e9"
-                        border = "#a5d6a7"
+                        bg_color = "#e8f5e9"
+                        border_color = "#a5d6a7"
+                        badge_emoji = "🟢"
                     elif game_netto in [-1, -2]:
-                        bg = "#ffebee"
-                        border = "#ef9a9a"
+                        bg_color = "#ffebee"
+                        border_color = "#ef9a9a"
+                        badge_emoji = "🔴"
                     elif game_netto <= -3:
-                        bg = "#f8d7da"
-                        border = "#f5c6cb"
+                        bg_color = "#f8d7da"
+                        border_color = "#f5c6cb"
+                        badge_emoji = "💀"
                     else:
-                        bg = "#ffffff"
-                        border = "#e0e0e0"
+                        bg_color = "#f8f9fa"
+                        border_color = "#e0e0e0"
+                        badge_emoji = "🤷"
 
-                    header_label = f"🏈 {away} @ {home} | {game['score']} ({game['status']})"
+                    netto_str = (
+                        f"+{game_netto}" if game_netto > 0 else f"{game_netto}"
+                    )
+                    header_label = f"{badge_emoji} [Netto: {netto_str}] 🏈 {away} @ {home} | {game['score']} ({game['status']})"
 
                     if st.session_state.expand_mode == "all":
                         is_expanded = True
@@ -445,23 +453,22 @@ if username:
                     else:
                         is_expanded = True
 
-                    # Eindeutige Klasse pro Matchup-Container
-                    box_class = f"matchup-box-{game['game_id']}"
-
+                    # Injiziere CSS direkt vor jedem Expander
                     st.markdown(
                         f"""
                         <style>
-                        .{box_class} div[data-testid="stExpander"] details {{
-                            background-color: {bg} !important;
-                            border: 1px solid {border} !important;
-                            border-radius: 0.5rem;
+                        div[data-testid="stExpander"]:has(summary:contains("{away} @ {home}")) details {{
+                            background-color: {bg_color} !important;
+                            border: 2px solid {border_color} !important;
+                            border-radius: 8px !important;
+                            margin-bottom: 12px;
                         }}
-                        .{box_class} div[data-testid="stExpander"] details summary {{
-                            background-color: {bg} !important;
-                            border-radius: 0.5rem;
+                        div[data-testid="stExpander"]:has(summary:contains("{away} @ {home}")) details summary {{
+                            background-color: {bg_color} !important;
+                            border-radius: 6px !important;
+                            font-weight: bold;
                         }}
                         </style>
-                        <div class="{box_class}">
                     """,
                         unsafe_allow_html=True,
                     )
@@ -477,9 +484,9 @@ if username:
                         for p in game_players:
                             my_cnt = len(p["my_leagues"])
                             opp_cnt = len(p["opp_leagues"])
-                            netto = my_cnt - opp_cnt
+                            p_netto = my_cnt - opp_cnt
 
-                            status = get_root_status(netto, is_de)
+                            status = get_root_status(p_netto, is_de)
 
                             with st.container(border=True):
                                 st.markdown(
@@ -505,8 +512,6 @@ if username:
                                 st.markdown(
                                     f"**{labels['opponent']}:** {opp_l_str}"
                                 )
-
-                    st.markdown("</div>", unsafe_allow_html=True)
 
             if not found_any and player_data:
                 st.info(labels["no_games_scheduled"])
