@@ -8,72 +8,55 @@ import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="Fantasy Football - Who to root for?",
-    page_icon="logo.png",  # Favicon im Browser-Tab
+    page_icon="logo.png",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# Anker für das Scroll-Ziel ganz oben setzen
+# Anker für das Scroll-Ziel ganz oben
 st.markdown(
     "<div id='top-anchor' style='position:absolute; top:0; left:0;'></div>",
     unsafe_allow_html=True,
 )
 
 # ---------------------------------------------------------
-# STYLING & DESIGN (Fix für DE/EN & Top-Bar im Light Mode)
+# STYLING & DESIGN
 # ---------------------------------------------------------
 custom_css = """
 <style>
-    /* Haupt-Hintergrund & Textfarbe */
     .stApp {
         background: linear-gradient(135deg, #0e1117 0%, #161b22 100%) !important;
         color: #f0f6fc !important;
     }
-    
-    /* Oberer Streamlit-Balken / Header auf dunkles Grau setzen */
     header[data-testid="stHeader"] {
         background-color: #161b22 !important;
     }
-    
-    /* Helle Schrift für allgemeine Labels (Sprache, Inputs, Sidebar) */
     .stApp label, .stApp .stWidgetLabel, [data-testid="stSidebar"] * {
         color: #f0f6fc !important;
     }
-
-    /* Expliziter Fix für Radio-Button Optionen (wie DE / EN) */
     div[data-testid="stRadio"] label p {
         color: #f0f6fc !important;
         font-weight: 600 !important;
     }
-
-    /* MATCHUP-EXPANDER: Schrift IMMER schwarz & fett (übersteuert den Dark Mode) */
     [data-testid="stExpander"] summary,
     [data-testid="stExpander"] summary * {
         color: #000000 !important;
         font-weight: bold !important;
     }
-
-    /* Haupt-Überschriften */
     h1, h2, h3, h4 {
         color: #58a6ff !important;
         font-weight: 800 !important;
     }
-    
-    /* Sidebar Styling */
     [data-testid="stSidebar"] {
         background-color: #161b22 !important;
         border-right: 1px solid #30363d;
     }
-
-    /* Input Felder (Textinputs, Radiobuttons) */
     .stTextInput input {
         background-color: #0d1117 !important;
         color: #58a6ff !important;
         border: 1px solid #30363d !important;
         border-radius: 8px !important;
     }
-    
-    /* Buttons optisch aufwerten */
     .stButton > button {
         background: linear-gradient(90deg, #1f6feb 0%, #238636 100%) !important;
         color: white !important;
@@ -87,22 +70,16 @@ custom_css = """
         transform: translateY(-2px);
         box-shadow: 0 6px 16px rgba(31,111,235,0.4) !important;
     }
-
-    /* Spieler-Karten (Container in den Expander-Elementen) */
     [data-testid="stVerticalBlockBorderWrapper"] {
         background-color: #161b22 !important;
         border: 1px solid #30363d !important;
         border-radius: 10px !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
     }
-    
-    /* Spieler-Texte innerhalb der vergrößerten Karten hell machen */
     [data-testid="stVerticalBlockBorderWrapper"] p, 
     [data-testid="stVerticalBlockBorderWrapper"] span {
         color: #f0f6fc !important;
     }
-
-    /* Trennlinie & Captions */
     hr {
         border-color: #30363d !important;
     }
@@ -186,14 +163,14 @@ labels = {
     ),
 }
 
-# Hauptbereich Header mit Logo & Titel
+# Hauptbereich Header
 col_logo, col_title = st.columns([1, 6])
 with col_logo:
     st.image("logo.png", use_container_width=True)
 with col_title:
     st.title(labels["title"])
 
-# Optionaler Bereich für öffentliche ESPN-Ligen in der Sidebar
+# Sidebar für ESPN
 st.sidebar.image("logo.png", use_container_width=True)
 st.sidebar.header("Öffentliche ESPN Liga (Optional)")
 espn_league_id = st.sidebar.text_input(
@@ -201,7 +178,7 @@ espn_league_id = st.sidebar.text_input(
 )
 espn_team_name = st.sidebar.text_input("Dein ESPN Teamname:", value="")
 
-# Sleeper Username ermitteln
+# Sleeper Username
 query_params = st.query_params
 DEFAULT_USER = "Schmitz"
 initial_username = query_params.get("user", DEFAULT_USER)
@@ -210,7 +187,6 @@ username = st.text_input(labels["username"], value=initial_username)
 if username:
     st.query_params["user"] = username
 
-# Bei neuem Seitenaufruf standardmäßig alles eingeklappt
 if "expand_mode" not in st.session_state:
     st.session_state.expand_mode = "none"
 
@@ -741,15 +717,17 @@ if username:
                                 )
 
                 # ---------------------------------------------------------
-                # BOTTOM NAVIGATION BUTTONS (DIRECT SCROLL FIX)
+                # BOTTOM NAVIGATION BUTTONS (ROBUSTER NATIVE SCROLL FIX)
                 # ---------------------------------------------------------
                 st.write("")
 
-                def set_collapse_mode():
-                    st.session_state.expand_mode = "none"
-
                 col_b1, col_b2 = st.columns(2)
+
                 with col_b1:
+
+                    def set_collapse_mode():
+                        st.session_state.expand_mode = "none"
+
                     st.button(
                         labels["btn_collapse_all"],
                         key="btn_bottom_collapse",
@@ -758,42 +736,52 @@ if username:
                     )
 
                 with col_b2:
-                    # Normaler Button, der als Auslöser für das JS-Skript dient
-                    st.button(
-                        labels["btn_scroll_top"],
-                        key="btn_bottom_scroll",
-                        use_container_width=True,
-                    )
+                    # Rein optischer HTML/JS-Button, der KEINEN Streamlit-Rerun auslöst
+                    scroll_btn_html = f"""
+                    <style>
+                        .scroll-btn {{
+                            width: 100%;
+                            height: 42px;
+                            background: linear-gradient(90deg, #1f6feb 0%, #238636 100%);
+                            color: white;
+                            border: none;
+                            border-radius: 8px;
+                            font-weight: bold;
+                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                            font-size: 14px;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                        }}
+                        .scroll-btn:hover {{
+                            transform: translateY(-2px);
+                            box-shadow: 0 6px 16px rgba(31,111,235,0.4);
+                        }}
+                    </style>
+                    <button class="scroll-btn" onclick="scrollToTop()">{labels['btn_scroll_top']}</button>
+                    <script>
+                    function scrollToTop() {{
+                        try {{
+                            // Haupt-Scrollcontainer von Streamlit ansteuern
+                            const container = window.top.document.querySelector('[data-testid="stAppViewContainer"]') 
+                                           || window.top.document.querySelector('section.main');
+                            if (container) {{
+                                container.scrollTo({{ top: 0, behavior: 'smooth' }});
+                            }}
+                            window.top.scrollTo({{ top: 0, behavior: 'smooth' }});
+                        }} catch (e) {{
+                            // Fallback falls iframe blockiert ist
+                            const anchor = window.parent.document.getElementById('top-anchor');
+                            if (anchor) {{
+                                anchor.scrollIntoView({{ behavior: 'smooth' }});
+                            }}
+                        }}
+                    }}
+                    </script>
+                    """
+                    components.html(scroll_btn_html, height=45)
 
-                # JS-Handler, der dauerhaft aktiv ist und beim Klick auf "btn_bottom_scroll" sofort hochscrollt
-                scroll_script = """
-                <script>
-                function attachScrollListener() {
-                    const doc = window.parent.document;
-                    // Finde den Streamlit-Button anhand seines Data-Testid Keys
-                    const scrollBtn = doc.querySelector('button[key="btn_bottom_scroll"]');
-                    if (scrollBtn && !scrollBtn.dataset.hasScrollListener) {
-                        scrollBtn.dataset.hasScrollListener = "true";
-                        scrollBtn.addEventListener('click', function() {
-                            // Versuche alle typischen Container sanft hochzuscrollen
-                            const mainContainer = doc.querySelector('section.main');
-                            if (mainContainer) {
-                                mainContainer.scrollTo({ top: 0, behavior: 'smooth' });
-                            }
-                            const anchor = doc.getElementById('top-anchor');
-                            if (anchor) {
-                                anchor.scrollIntoView({ behavior: 'smooth' });
-                            }
-                        });
-                    }
-                }
-                // Kurz warten bis der DOM gerendert ist
-                setTimeout(attachScrollListener, 300);
-                </script>
-                """
-                components.html(scroll_script, height=0, width=0)
-
-                # JS für fette schwarze Schrift & Matchup-Einfärbung im Light & Dark Mode
+                # JS für fette schwarze Schrift & Matchup-Einfärbung
                 js_script = "<script>"
                 for title, (bg, border) in color_map_js.items():
                     escaped_title = title.replace("'", "\\'")
