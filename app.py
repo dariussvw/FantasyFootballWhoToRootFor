@@ -127,6 +127,7 @@ labels = {
     "btn_live_only": (
         "Nur Live-Spiele aufklappen" if is_de else "Expand Live Games Only"
     ),
+    "btn_scroll_top": "Nach oben" if is_de else "Scroll to Top",
     "user_not_found": (
         "Sleeper-User '{username}' konnte nicht gefunden werden."
         if is_de
@@ -732,6 +733,36 @@ if username:
                                 st.markdown(
                                     f"**{labels['opponent']}:** {opp_l_str}"
                                 )
+
+                # ---------------------------------------------------------
+                # BOTTOM NAVIGATION BUTTONS
+                # ---------------------------------------------------------
+                st.write("")
+                col_b1, col_b2 = st.columns(2)
+                with col_b1:
+                    if st.button(
+                        labels["btn_collapse_all"],
+                        key="btn_bottom_collapse",
+                        use_container_width=True,
+                    ):
+                        st.session_state.expand_mode = "none"
+                        st.rerun()
+
+                with col_b2:
+                    if st.button(
+                        labels["btn_scroll_top"],
+                        key="btn_bottom_top",
+                        use_container_width=True,
+                    ):
+                        components.html(
+                            """
+                            <script>
+                                window.parent.scrollTo({top: 0, behavior: 'smooth'});
+                            </script>
+                            """,
+                            height=0,
+                            width=0,
+                        )
 
                 # JS für fette schwarze Schrift & Matchup-Einfärbung im Light & Dark Mode
                 js_script = "<script>"
