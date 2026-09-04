@@ -587,15 +587,15 @@ if username:
             col1, col2 = st.columns(2)
             with col1:
                 btn_all_label = (
-                    labels["btn_expand_all"]
-                    if st.session_state.expand_mode == "none"
-                    else labels["btn_collapse_all"]
+                    labels["btn_collapse_all"]
+                    if st.session_state.expand_mode != "none"
+                    else labels["btn_expand_all"]
                 )
                 if st.button(btn_all_label, use_container_width=True):
                     st.session_state.expand_mode = (
-                        "all"
-                        if st.session_state.expand_mode == "none"
-                        else "none"
+                        "none"
+                        if st.session_state.expand_mode != "none"
+                        else "all"
                     )
                     st.rerun()
 
@@ -710,19 +710,16 @@ if username:
                                 )
 
                 # ---------------------------------------------------------
-                # BOTTOM NAVIGATION (NUR ZUKLAPPEN BUTTON)
+                # BOTTOM NAVIGATION (ALLE ZUKLAPPEN BUTTON)
                 # ---------------------------------------------------------
                 st.write("")
-
-                def set_collapse_mode():
-                    st.session_state.expand_mode = "none"
-
-                st.button(
+                if st.button(
                     labels["btn_collapse_all"],
                     key="btn_bottom_collapse",
                     use_container_width=True,
-                    on_click=set_collapse_mode,
-                )
+                ):
+                    st.session_state.expand_mode = "none"
+                    st.rerun()
 
                 # JS für fette schwarze Schrift & Matchup-Einfärbung
                 js_script = "<script>"
