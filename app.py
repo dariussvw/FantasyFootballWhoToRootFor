@@ -734,12 +734,14 @@ if username:
                     st.session_state.reset_key += 1
                     st.rerun()
 
-                # Robustes JavaScript für Re-Renderings und dynamisches Styling mit !important
+                # MutationObserver sorgt dafür, dass die Styles bei jeder DOM-Änderung bestehen bleiben
                 js_script = f"""
                 <script>
+                    const colorMap = {color_map_js};
+
                     function applyExpanderColors() {{
-                        const colorMap = {color_map_js};
-                        const summaries = window.parent.document.querySelectorAll('details summary');
+                        const doc = window.parent.document;
+                        const summaries = doc.querySelectorAll('details summary');
                         
                         summaries.forEach(el => {{
                             const text = el.innerText.trim();
@@ -755,10 +757,18 @@ if username:
                         }});
                     }}
 
-                    // Mehrmaliges Ausführen stellt sicher, dass es nach dem DOM-Rerender greift
-                    setTimeout(applyExpanderColors, 50);
-                    setTimeout(applyExpanderColors, 300);
-                    setTimeout(applyExpanderColors, 800);
+                    // Erstes Ausführen nach Laden
+                    applyExpanderColors();
+
+                    // MutationObserver überwacht das gesamte Dashboard auf Einklapp-/Layout-Änderungen
+                    const targetNode = window.parent.document.body;
+                    const config = {{ childList: true, subtree: true, attributes: true }};
+
+                    const observer = new MutationObserver((mutationsList, observer) => {{
+                        applyExpanderColors();
+                    }});
+
+                    observer.observe(targetNode, config);
                 </script>
                 """
                 components.html(js_script, height=0, width=0)
