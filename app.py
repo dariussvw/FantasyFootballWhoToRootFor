@@ -13,9 +13,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Anker für den "Nach oben"-Scroll-Button
-st.markdown("<div id='top'></div>", unsafe_allow_html=True)
-
 # ---------------------------------------------------------
 # STYLING & DESIGN (Fix für DE/EN & Top-Bar im Light Mode)
 # ---------------------------------------------------------
@@ -738,50 +735,45 @@ if username:
                                 )
 
                 # ---------------------------------------------------------
-# BOTTOM NAVIGATION BUTTONS (ROBUST SCROLL FIX)
-# ---------------------------------------------------------
-st.write("")
+                # BOTTOM NAVIGATION BUTTONS (ROBUST SCROLL FIX)
+                # ---------------------------------------------------------
+                st.write("")
 
+                def set_collapse_mode():
+                    st.session_state.expand_mode = "none"
 
-def set_collapse_mode():
-    st.session_state.expand_mode = "none"
+                def trigger_scroll_top():
+                    st.session_state.scroll_to_top = True
 
+                col_b1, col_b2 = st.columns(2)
+                with col_b1:
+                    st.button(
+                        labels["btn_collapse_all"],
+                        key="btn_bottom_collapse",
+                        use_container_width=True,
+                        on_click=set_collapse_mode,
+                    )
 
-def trigger_scroll_top():
-    st.session_state.scroll_to_top = True
+                with col_b2:
+                    st.button(
+                        labels["btn_scroll_top"],
+                        key="btn_bottom_scroll",
+                        use_container_width=True,
+                        on_click=trigger_scroll_top,
+                    )
 
-
-col_b1, col_b2 = st.columns(2)
-
-with col_b1:
-    st.button(
-        labels["btn_collapse_all"],
-        key="btn_bottom_collapse",
-        use_container_width=True,
-        on_click=set_collapse_mode,
-    )
-
-with col_b2:
-    # Regulärer Streamlit-Button für zuverlässiges Triggering
-    st.button(
-        labels["btn_scroll_top"],
-        key="btn_bottom_scroll",
-        use_container_width=True,
-        on_click=trigger_scroll_top,
-    )
-
-# Überprüfen, ob Scroll getriggert wurde & JS über das Hauptdokument ausführen
-if st.session_state.get("scroll_to_top", False):
-    st.session_state.scroll_to_top = False
-    st.components.v1.html(
-        """
-        <script>
-            window.parent.document.querySelector('section.main').scrollTo({top: 0, behavior: 'smooth'});
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
+                # Überprüfen, ob Scroll getriggert wurde
+                if st.session_state.get("scroll_to_top", False):
+                    st.session_state.scroll_to_top = False
+                    components.html(
+                        """
+                        <script>
+                            window.parent.document.querySelector('section.main').scrollTo({top: 0, behavior: 'smooth'});
+                        </script>
+                        """,
+                        height=0,
+                        width=0,
+                    )
 
                 # JS für fette schwarze Schrift & Matchup-Einfärbung im Light & Dark Mode
                 js_script = "<script>"
