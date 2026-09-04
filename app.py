@@ -8,49 +8,66 @@ import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="Fantasy Football - Who to root for?",
-    page_icon="logo.png",
+    page_icon="logo.png",  # Favicon im Browser-Tab
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
 # ---------------------------------------------------------
-# STYLING & DESIGN
+# STYLING & DESIGN (Fix für DE/EN & Top-Bar im Light Mode)
 # ---------------------------------------------------------
 custom_css = """
 <style>
+    /* Haupt-Hintergrund & Textfarbe */
     .stApp {
         background: linear-gradient(135deg, #0e1117 0%, #161b22 100%) !important;
         color: #f0f6fc !important;
     }
+    
+    /* Oberer Streamlit-Balken / Header auf dunkles Grau setzen */
     header[data-testid="stHeader"] {
         background-color: #161b22 !important;
     }
+    
+    /* Helle Schrift für allgemeine Labels (Sprache, Inputs, Sidebar) */
     .stApp label, .stApp .stWidgetLabel, [data-testid="stSidebar"] * {
         color: #f0f6fc !important;
     }
+
+    /* Expliziter Fix für Radio-Button Optionen (wie DE / EN) */
     div[data-testid="stRadio"] label p {
         color: #f0f6fc !important;
         font-weight: 600 !important;
     }
+
+    /* MATCHUP-EXPANDER: Schrift IMMER schwarz & fett (übersteuert den Dark Mode) */
     [data-testid="stExpander"] summary,
     [data-testid="stExpander"] summary * {
         color: #000000 !important;
         font-weight: bold !important;
     }
+
+    /* Haupt-Überschriften */
     h1, h2, h3, h4 {
         color: #58a6ff !important;
         font-weight: 800 !important;
     }
+    
+    /* Sidebar Styling */
     [data-testid="stSidebar"] {
         background-color: #161b22 !important;
         border-right: 1px solid #30363d;
     }
+
+    /* Input Felder (Textinputs, Radiobuttons) */
     .stTextInput input {
         background-color: #0d1117 !important;
         color: #58a6ff !important;
         border: 1px solid #30363d !important;
         border-radius: 8px !important;
     }
+    
+    /* Buttons optisch aufwerten */
     .stButton > button {
         background: linear-gradient(90deg, #1f6feb 0%, #238636 100%) !important;
         color: white !important;
@@ -64,16 +81,22 @@ custom_css = """
         transform: translateY(-2px);
         box-shadow: 0 6px 16px rgba(31,111,235,0.4) !important;
     }
+
+    /* Spieler-Karten (Container in den Expander-Elementen) */
     [data-testid="stVerticalBlockBorderWrapper"] {
         background-color: #161b22 !important;
         border: 1px solid #30363d !important;
         border-radius: 10px !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
     }
+    
+    /* Spieler-Texte innerhalb der vergrößerten Karten hell machen */
     [data-testid="stVerticalBlockBorderWrapper"] p, 
     [data-testid="stVerticalBlockBorderWrapper"] span {
         color: #f0f6fc !important;
     }
+
+    /* Trennlinie & Captions */
     hr {
         border-color: #30363d !important;
     }
@@ -156,14 +179,14 @@ labels = {
     ),
 }
 
-# Hauptbereich Header
+# Hauptbereich Header mit Logo & Titel
 col_logo, col_title = st.columns([1, 6])
 with col_logo:
     st.image("logo.png", use_container_width=True)
 with col_title:
     st.title(labels["title"])
 
-# Sidebar für ESPN
+# Optionaler Bereich für öffentliche ESPN-Ligen in der Sidebar
 st.sidebar.image("logo.png", use_container_width=True)
 st.sidebar.header("Öffentliche ESPN Liga (Optional)")
 espn_league_id = st.sidebar.text_input(
@@ -171,7 +194,7 @@ espn_league_id = st.sidebar.text_input(
 )
 espn_team_name = st.sidebar.text_input("Dein ESPN Teamname:", value="")
 
-# Sleeper Username
+# Sleeper Username ermitteln
 query_params = st.query_params
 DEFAULT_USER = "Schmitz"
 initial_username = query_params.get("user", DEFAULT_USER)
@@ -180,11 +203,9 @@ username = st.text_input(labels["username"], value=initial_username)
 if username:
     st.query_params["user"] = username
 
+# Bei neuem Seitenaufruf standardmäßig alles eingeklappt
 if "expand_mode" not in st.session_state:
     st.session_state.expand_mode = "none"
-
-if "reset_key" not in st.session_state:
-    st.session_state.reset_key = 0
 
 
 @st.cache_data(ttl=3600)
@@ -589,24 +610,22 @@ if username:
 
             col1, col2 = st.columns(2)
             with col1:
-                btn_top_label = (
-                    labels["btn_collapse_all"]
-                    if st.session_state.expand_mode == "all"
-                    else labels["btn_expand_all"]
+                btn_all_label = (
+                    labels["btn_expand_all"]
+                    if st.session_state.expand_mode == "none"
+                    else labels["btn_collapse_all"]
                 )
-                if st.button(btn_top_label, use_container_width=True):
+                if st.button(btn_all_label, use_container_width=True):
                     st.session_state.expand_mode = (
-                        "none"
-                        if st.session_state.expand_mode == "all"
-                        else "all"
+                        "all"
+                        if st.session_state.expand_mode == "none"
+                        else "none"
                     )
-                    st.session_state.reset_key += 1
                     st.rerun()
 
             with col2:
                 if st.button(labels["btn_live_only"], use_container_width=True):
                     st.session_state.expand_mode = "live_only"
-                    st.session_state.reset_key += 1
                     st.rerun()
 
             if not games:
@@ -636,7 +655,7 @@ if username:
                     })
 
             if relevant_games:
-                for idx, item in enumerate(relevant_games):
+                for item in relevant_games:
                     game = item["game"]
                     game_players = item["players"]
                     netto = item["netto"]
@@ -674,14 +693,7 @@ if username:
                     else:
                         is_expanded = False
 
-                    # Dynamischer Key erzwingt das Neuladen der Expander-Zustände im DOM
-                    expander_key = f"exp_{st.session_state.reset_key}_{idx}"
-
-                    with st.expander(
-                        header_label,
-                        expanded=is_expanded,
-                        key=expander_key,
-                    ):
+                    with st.expander(header_label, expanded=is_expanded):
                         game_players.sort(
                             key=lambda p: (
                                 len(p["my_leagues"]) - len(p["opp_leagues"])
@@ -721,56 +733,25 @@ if username:
                                     f"**{labels['opponent']}:** {opp_l_str}"
                                 )
 
-                # ---------------------------------------------------------
-                # BOTTOM NAVIGATION (ALLE ZUKLAPPEN BUTTON)
-                # ---------------------------------------------------------
-                st.write("")
-                if st.button(
-                    labels["btn_collapse_all"],
-                    key="btn_bottom_collapse",
-                    use_container_width=True,
-                ):
-                    st.session_state.expand_mode = "none"
-                    st.session_state.reset_key += 1
-                    st.rerun()
-
-                # MutationObserver sorgt dafür, dass die Styles bei jeder DOM-Änderung bestehen bleiben
-                js_script = f"""
-                <script>
-                    const colorMap = {color_map_js};
-
-                    function applyExpanderColors() {{
-                        const doc = window.parent.document;
-                        const summaries = doc.querySelectorAll('details summary');
-                        
+                # JS für fette schwarze Schrift & Matchup-Einfärbung im Light & Dark Mode
+                js_script = "<script>"
+                for title, (bg, border) in color_map_js.items():
+                    escaped_title = title.replace("'", "\\'")
+                    js_script += f"""
+                    try {{
+                        const summaries = window.parent.document.querySelectorAll('details summary');
                         summaries.forEach(el => {{
-                            const text = el.innerText.trim();
-                            for (const [title, colors] of Object.entries(colorMap)) {{
-                                if (text.includes(title)) {{
-                                    el.style.setProperty('background-color', colors[0], 'important');
-                                    el.style.setProperty('border', '1px solid ' + colors[1], 'important');
-                                    el.style.setProperty('border-radius', '8px', 'important');
-                                    el.style.setProperty('color', '#000000', 'important');
-                                    el.style.setProperty('font-weight', 'bold', 'important');
-                                }}
+                            if (el.innerText.includes('{escaped_title}')) {{
+                                el.style.backgroundColor = '{bg}';
+                                el.style.border = '1px solid {border}';
+                                el.style.borderRadius = '8px';
+                                el.style.color = '#000000';
+                                el.style.fontWeight = 'bold';
                             }}
                         }});
-                    }}
-
-                    // Erstes Ausführen nach Laden
-                    applyExpanderColors();
-
-                    // MutationObserver überwacht das gesamte Dashboard auf Einklapp-/Layout-Änderungen
-                    const targetNode = window.parent.document.body;
-                    const config = {{ childList: true, subtree: true, attributes: true }};
-
-                    const observer = new MutationObserver((mutationsList, observer) => {{
-                        applyExpanderColors();
-                    }});
-
-                    observer.observe(targetNode, config);
-                </script>
-                """
+                    }} catch(e) {{ console.error(e); }}
+                    """
+                js_script += "</script>"
                 components.html(js_script, height=0, width=0)
 
             elif player_data:
