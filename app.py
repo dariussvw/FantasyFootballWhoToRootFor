@@ -13,6 +13,12 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# Anker für das Scroll-Ziel ganz oben setzen
+st.markdown(
+    "<div id='top-anchor' style='position:absolute; top:0; left:0;'></div>",
+    unsafe_allow_html=True,
+)
+
 # ---------------------------------------------------------
 # STYLING & DESIGN (Fix für DE/EN & Top-Bar im Light Mode)
 # ---------------------------------------------------------
@@ -735,15 +741,12 @@ if username:
                                 )
 
                 # ---------------------------------------------------------
-                # BOTTOM NAVIGATION BUTTONS (ROBUST SCROLL FIX)
+                # BOTTOM NAVIGATION BUTTONS (DIRECT SCROLL FIX)
                 # ---------------------------------------------------------
                 st.write("")
 
                 def set_collapse_mode():
                     st.session_state.expand_mode = "none"
-
-                def trigger_scroll_top():
-                    st.session_state.scroll_to_top = True
 
                 col_b1, col_b2 = st.columns(2)
                 with col_b1:
@@ -755,25 +758,40 @@ if username:
                     )
 
                 with col_b2:
+                    # Normaler Button, der als Auslöser für das JS-Skript dient
                     st.button(
                         labels["btn_scroll_top"],
                         key="btn_bottom_scroll",
                         use_container_width=True,
-                        on_click=trigger_scroll_top,
                     )
 
-                # Überprüfen, ob Scroll getriggert wurde
-                if st.session_state.get("scroll_to_top", False):
-                    st.session_state.scroll_to_top = False
-                    components.html(
-                        """
-                        <script>
-                            window.parent.document.querySelector('section.main').scrollTo({top: 0, behavior: 'smooth'});
-                        </script>
-                        """,
-                        height=0,
-                        width=0,
-                    )
+                # JS-Handler, der dauerhaft aktiv ist und beim Klick auf "btn_bottom_scroll" sofort hochscrollt
+                scroll_script = """
+                <script>
+                function attachScrollListener() {
+                    const doc = window.parent.document;
+                    // Finde den Streamlit-Button anhand seines Data-Testid Keys
+                    const scrollBtn = doc.querySelector('button[key="btn_bottom_scroll"]');
+                    if (scrollBtn && !scrollBtn.dataset.hasScrollListener) {
+                        scrollBtn.dataset.hasScrollListener = "true";
+                        scrollBtn.addEventListener('click', function() {
+                            // Versuche alle typischen Container sanft hochzuscrollen
+                            const mainContainer = doc.querySelector('section.main');
+                            if (mainContainer) {
+                                mainContainer.scrollTo({ top: 0, behavior: 'smooth' });
+                            }
+                            const anchor = doc.getElementById('top-anchor');
+                            if (anchor) {
+                                anchor.scrollIntoView({ behavior: 'smooth' });
+                            }
+                        });
+                    }
+                }
+                // Kurz warten bis der DOM gerendert ist
+                setTimeout(attachScrollListener, 300);
+                </script>
+                """
+                components.html(scroll_script, height=0, width=0)
 
                 # JS für fette schwarze Schrift & Matchup-Einfärbung im Light & Dark Mode
                 js_script = "<script>"
