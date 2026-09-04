@@ -13,16 +13,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Anker für das Scroll-Ziel ganz oben
-st.markdown(
-    "<div id='top-anchor' style='position:absolute; top:0; left:0;'></div>",
-    unsafe_allow_html=True,
-)
-
 # ---------------------------------------------------------
-# STYLING & DESIGN
+# STYLING & GLOBAL JAVASCRIPT (HANDLES SCROLLING SAFELY)
 # ---------------------------------------------------------
-custom_css = """
+custom_css_and_js = """
 <style>
     .stApp {
         background: linear-gradient(135deg, #0e1117 0%, #161b22 100%) !important;
@@ -87,8 +81,18 @@ custom_css = """
         color: #8b949e !important;
     }
 </style>
+
+<script>
+// Event-Listener im Hauptfenster registrieren (umgeht iframe Security-Blockaden)
+window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'SCROLL_TO_TOP') {
+        const container = document.querySelector('[data-testid="stAppViewContainer"]') || document.querySelector('section.main') || window;
+        container.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+});
+</script>
 """
-st.markdown(custom_css, unsafe_allow_html=True)
+st.markdown(custom_css_and_js, unsafe_allow_html=True)
 # ---------------------------------------------------------
 
 # 1. Sprache wählen
@@ -717,7 +721,7 @@ if username:
                                 )
 
                 # ---------------------------------------------------------
-                # BOTTOM NAVIGATION BUTTONS (ROBUSTER NATIVE SCROLL FIX)
+                # BOTTOM NAVIGATION BUTTONS (POSTMESSAGE FIX)
                 # ---------------------------------------------------------
                 st.write("")
 
@@ -736,9 +740,10 @@ if username:
                     )
 
                 with col_b2:
-                    # Rein optischer HTML/JS-Button, der KEINEN Streamlit-Rerun auslöst
+                    # Sendet ein Signal an das Parent-Window (umgeht Cross-Origin Blocker)
                     scroll_btn_html = f"""
                     <style>
+                        body {{ margin: 0; padding: 0; background: transparent; }}
                         .scroll-btn {{
                             width: 100%;
                             height: 42px;
@@ -758,24 +763,10 @@ if username:
                             box-shadow: 0 6px 16px rgba(31,111,235,0.4);
                         }}
                     </style>
-                    <button class="scroll-btn" onclick="scrollToTop()">{labels['btn_scroll_top']}</button>
+                    <button class="scroll-btn" onclick="triggerScroll()">{labels['btn_scroll_top']}</button>
                     <script>
-                    function scrollToTop() {{
-                        try {{
-                            // Haupt-Scrollcontainer von Streamlit ansteuern
-                            const container = window.top.document.querySelector('[data-testid="stAppViewContainer"]') 
-                                           || window.top.document.querySelector('section.main');
-                            if (container) {{
-                                container.scrollTo({{ top: 0, behavior: 'smooth' }});
-                            }}
-                            window.top.scrollTo({{ top: 0, behavior: 'smooth' }});
-                        }} catch (e) {{
-                            // Fallback falls iframe blockiert ist
-                            const anchor = window.parent.document.getElementById('top-anchor');
-                            if (anchor) {{
-                                anchor.scrollIntoView({{ behavior: 'smooth' }});
-                            }}
-                        }}
+                    function triggerScroll() {{
+                        window.parent.postMessage({{ type: 'SCROLL_TO_TOP' }}, '*');
                     }}
                     </script>
                     """
