@@ -733,6 +733,11 @@ if username:
                                     f"**{labels['opponent']}:** {opp_l_str}"
                                 )
 
+                # Button unter den Matchups zum Einklappen aller geöffneten Matchups
+                if st.button(labels["btn_collapse_all"], use_container_width=True, key="btn_collapse_bottom"):
+                    st.session_state.expand_mode = "none"
+                    st.rerun()
+
                 # JS für fette schwarze Schrift & Matchup-Einfärbung im Light & Dark Mode
                 js_script = "<script>"
                 for title, (bg, border) in color_map_js.items():
