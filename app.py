@@ -14,9 +14,9 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# STYLING & GLOBAL JAVASCRIPT (HANDLES SCROLLING SAFELY)
+# STYLING & DESIGN
 # ---------------------------------------------------------
-custom_css_and_js = """
+custom_css = """
 <style>
     .stApp {
         background: linear-gradient(135deg, #0e1117 0%, #161b22 100%) !important;
@@ -81,18 +81,8 @@ custom_css_and_js = """
         color: #8b949e !important;
     }
 </style>
-
-<script>
-// Event-Listener im Hauptfenster registrieren (umgeht iframe Security-Blockaden)
-window.addEventListener('message', function(event) {
-    if (event.data && event.data.type === 'SCROLL_TO_TOP') {
-        const container = document.querySelector('[data-testid="stAppViewContainer"]') || document.querySelector('section.main') || window;
-        container.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-});
-</script>
 """
-st.markdown(custom_css_and_js, unsafe_allow_html=True)
+st.markdown(custom_css, unsafe_allow_html=True)
 # ---------------------------------------------------------
 
 # 1. Sprache wählen
@@ -114,7 +104,6 @@ labels = {
     "btn_live_only": (
         "Nur Live-Spiele aufklappen" if is_de else "Expand Live Games Only"
     ),
-    "btn_scroll_top": "Nach oben" if is_de else "Scroll to Top",
     "user_not_found": (
         "Sleeper-User '{username}' konnte nicht gefunden werden."
         if is_de
@@ -721,56 +710,19 @@ if username:
                                 )
 
                 # ---------------------------------------------------------
-                # BOTTOM NAVIGATION BUTTONS (POSTMESSAGE FIX)
+                # BOTTOM NAVIGATION (NUR ZUKLAPPEN BUTTON)
                 # ---------------------------------------------------------
                 st.write("")
 
-                col_b1, col_b2 = st.columns(2)
+                def set_collapse_mode():
+                    st.session_state.expand_mode = "none"
 
-                with col_b1:
-
-                    def set_collapse_mode():
-                        st.session_state.expand_mode = "none"
-
-                    st.button(
-                        labels["btn_collapse_all"],
-                        key="btn_bottom_collapse",
-                        use_container_width=True,
-                        on_click=set_collapse_mode,
-                    )
-
-                with col_b2:
-                    # Sendet ein Signal an das Parent-Window (umgeht Cross-Origin Blocker)
-                    scroll_btn_html = f"""
-                    <style>
-                        body {{ margin: 0; padding: 0; background: transparent; }}
-                        .scroll-btn {{
-                            width: 100%;
-                            height: 42px;
-                            background: linear-gradient(90deg, #1f6feb 0%, #238636 100%);
-                            color: white;
-                            border: none;
-                            border-radius: 8px;
-                            font-weight: bold;
-                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                            font-size: 14px;
-                            cursor: pointer;
-                            transition: all 0.3s ease;
-                            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                        }}
-                        .scroll-btn:hover {{
-                            transform: translateY(-2px);
-                            box-shadow: 0 6px 16px rgba(31,111,235,0.4);
-                        }}
-                    </style>
-                    <button class="scroll-btn" onclick="triggerScroll()">{labels['btn_scroll_top']}</button>
-                    <script>
-                    function triggerScroll() {{
-                        window.parent.postMessage({{ type: 'SCROLL_TO_TOP' }}, '*');
-                    }}
-                    </script>
-                    """
-                    components.html(scroll_btn_html, height=45)
+                st.button(
+                    labels["btn_collapse_all"],
+                    key="btn_bottom_collapse",
+                    use_container_width=True,
+                    on_click=set_collapse_mode,
+                )
 
                 # JS für fette schwarze Schrift & Matchup-Einfärbung
                 js_script = "<script>"
