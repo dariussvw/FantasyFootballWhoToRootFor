@@ -738,42 +738,50 @@ if username:
                                 )
 
                 # ---------------------------------------------------------
-                # BOTTOM NAVIGATION BUTTONS (KORRIGIERT)
-                # ---------------------------------------------------------
-                st.write("")
+# BOTTOM NAVIGATION BUTTONS (ROBUST SCROLL FIX)
+# ---------------------------------------------------------
+st.write("")
 
-                def set_collapse_mode():
-                    st.session_state.expand_mode = "none"
 
-                col_b1, col_b2 = st.columns(2)
-                with col_b1:
-                    st.button(
-                        labels["btn_collapse_all"],
-                        key="btn_bottom_collapse",
-                        use_container_width=True,
-                        on_click=set_collapse_mode,
-                    )
+def set_collapse_mode():
+    st.session_state.expand_mode = "none"
 
-                with col_b2:
-                    components.html(
-                        f"""
-                        <button onclick="window.top.location.href='#top';" style="
-                            width: 100%;
-                            height: 38px;
-                            background: linear-gradient(90deg, #1f6feb 0%, #238636 100%);
-                            color: white;
-                            border: none;
-                            border-radius: 8px;
-                            font-weight: bold;
-                            font-family: sans-serif;
-                            cursor: pointer;
-                            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                        ">
-                            {labels["btn_scroll_top"]}
-                        </button>
-                        """,
-                        height=45,
-                    )
+
+def trigger_scroll_top():
+    st.session_state.scroll_to_top = True
+
+
+col_b1, col_b2 = st.columns(2)
+
+with col_b1:
+    st.button(
+        labels["btn_collapse_all"],
+        key="btn_bottom_collapse",
+        use_container_width=True,
+        on_click=set_collapse_mode,
+    )
+
+with col_b2:
+    # Regulärer Streamlit-Button für zuverlässiges Triggering
+    st.button(
+        labels["btn_scroll_top"],
+        key="btn_bottom_scroll",
+        use_container_width=True,
+        on_click=trigger_scroll_top,
+    )
+
+# Überprüfen, ob Scroll getriggert wurde & JS über das Hauptdokument ausführen
+if st.session_state.get("scroll_to_top", False):
+    st.session_state.scroll_to_top = False
+    st.components.v1.html(
+        """
+        <script>
+            window.parent.document.querySelector('section.main').scrollTo({top: 0, behavior: 'smooth'});
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
 
                 # JS für fette schwarze Schrift & Matchup-Einfärbung im Light & Dark Mode
                 js_script = "<script>"
