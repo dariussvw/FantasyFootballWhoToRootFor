@@ -183,6 +183,9 @@ if username:
 if "expand_mode" not in st.session_state:
     st.session_state.expand_mode = "none"
 
+if "reset_key" not in st.session_state:
+    st.session_state.reset_key = 0
+
 
 @st.cache_data(ttl=3600)
 def get_nfl_players():
@@ -586,7 +589,6 @@ if username:
 
             col1, col2 = st.columns(2)
             with col1:
-                # Oben Toggle zwischen Aufklappen und Zuklappen
                 btn_top_label = (
                     labels["btn_collapse_all"]
                     if st.session_state.expand_mode == "all"
@@ -598,11 +600,13 @@ if username:
                         if st.session_state.expand_mode == "all"
                         else "all"
                     )
+                    st.session_state.reset_key += 1
                     st.rerun()
 
             with col2:
                 if st.button(labels["btn_live_only"], use_container_width=True):
                     st.session_state.expand_mode = "live_only"
+                    st.session_state.reset_key += 1
                     st.rerun()
 
             if not games:
@@ -632,7 +636,7 @@ if username:
                     })
 
             if relevant_games:
-                for item in relevant_games:
+                for idx, item in enumerate(relevant_games):
                     game = item["game"]
                     game_players = item["players"]
                     netto = item["netto"]
@@ -670,7 +674,14 @@ if username:
                     else:
                         is_expanded = False
 
-                    with st.expander(header_label, expanded=is_expanded):
+                    # Dynamischer Key erzwingt das Neuladen der Expander-Zustände im DOM
+                    expander_key = f"exp_{st.session_state.reset_key}_{idx}"
+
+                    with st.expander(
+                        header_label,
+                        expanded=is_expanded,
+                        key=expander_key,
+                    ):
                         game_players.sort(
                             key=lambda p: (
                                 len(p["my_leagues"]) - len(p["opp_leagues"])
@@ -714,13 +725,13 @@ if username:
                 # BOTTOM NAVIGATION (ALLE ZUKLAPPEN BUTTON)
                 # ---------------------------------------------------------
                 st.write("")
-                # Der untere Button schließt nun IMMER ausnahmslos alle Matchups
                 if st.button(
                     labels["btn_collapse_all"],
                     key="btn_bottom_collapse",
                     use_container_width=True,
                 ):
                     st.session_state.expand_mode = "none"
+                    st.session_state.reset_key += 1
                     st.rerun()
 
                 # JS für fette schwarze Schrift & Matchup-Einfärbung
