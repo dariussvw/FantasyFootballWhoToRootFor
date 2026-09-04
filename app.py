@@ -13,6 +13,9 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# Anker für den "Nach oben"-Scroll-Button
+st.markdown("<div id='top'></div>", unsafe_allow_html=True)
+
 # ---------------------------------------------------------
 # STYLING & DESIGN (Fix für DE/EN & Top-Bar im Light Mode)
 # ---------------------------------------------------------
@@ -735,34 +738,42 @@ if username:
                                 )
 
                 # ---------------------------------------------------------
-                # BOTTOM NAVIGATION BUTTONS
+                # BOTTOM NAVIGATION BUTTONS (KORRIGIERT)
                 # ---------------------------------------------------------
                 st.write("")
+
+                def set_collapse_mode():
+                    st.session_state.expand_mode = "none"
+
                 col_b1, col_b2 = st.columns(2)
                 with col_b1:
-                    if st.button(
+                    st.button(
                         labels["btn_collapse_all"],
                         key="btn_bottom_collapse",
                         use_container_width=True,
-                    ):
-                        st.session_state.expand_mode = "none"
-                        st.rerun()
+                        on_click=set_collapse_mode,
+                    )
 
                 with col_b2:
-                    if st.button(
-                        labels["btn_scroll_top"],
-                        key="btn_bottom_top",
-                        use_container_width=True,
-                    ):
-                        components.html(
-                            """
-                            <script>
-                                window.parent.scrollTo({top: 0, behavior: 'smooth'});
-                            </script>
-                            """,
-                            height=0,
-                            width=0,
-                        )
+                    components.html(
+                        f"""
+                        <button onclick="window.top.location.href='#top';" style="
+                            width: 100%;
+                            height: 38px;
+                            background: linear-gradient(90deg, #1f6feb 0%, #238636 100%);
+                            color: white;
+                            border: none;
+                            border-radius: 8px;
+                            font-weight: bold;
+                            font-family: sans-serif;
+                            cursor: pointer;
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                        ">
+                            {labels["btn_scroll_top"]}
+                        </button>
+                        """,
+                        height=45,
+                    )
 
                 # JS für fette schwarze Schrift & Matchup-Einfärbung im Light & Dark Mode
                 js_script = "<script>"
