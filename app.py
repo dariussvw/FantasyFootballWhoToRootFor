@@ -586,15 +586,16 @@ if username:
 
             col1, col2 = st.columns(2)
             with col1:
-                btn_all_label = (
+                # Oben Toggle zwischen Aufklappen und Zuklappen
+                btn_top_label = (
                     labels["btn_collapse_all"]
-                    if st.session_state.expand_mode != "none"
+                    if st.session_state.expand_mode == "all"
                     else labels["btn_expand_all"]
                 )
-                if st.button(btn_all_label, use_container_width=True):
+                if st.button(btn_top_label, use_container_width=True):
                     st.session_state.expand_mode = (
                         "none"
-                        if st.session_state.expand_mode != "none"
+                        if st.session_state.expand_mode == "all"
                         else "all"
                     )
                     st.rerun()
@@ -713,6 +714,7 @@ if username:
                 # BOTTOM NAVIGATION (ALLE ZUKLAPPEN BUTTON)
                 # ---------------------------------------------------------
                 st.write("")
+                # Der untere Button schließt nun IMMER ausnahmslos alle Matchups
                 if st.button(
                     labels["btn_collapse_all"],
                     key="btn_bottom_collapse",
