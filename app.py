@@ -734,25 +734,33 @@ if username:
                     st.session_state.reset_key += 1
                     st.rerun()
 
-                # JS für fette schwarze Schrift & Matchup-Einfärbung
-                js_script = "<script>"
-                for title, (bg, border) in color_map_js.items():
-                    escaped_title = title.replace("'", "\\'")
-                    js_script += f"""
-                    try {{
+                # Robustes JavaScript für Re-Renderings und dynamisches Styling mit !important
+                js_script = f"""
+                <script>
+                    function applyExpanderColors() {{
+                        const colorMap = {color_map_js};
                         const summaries = window.parent.document.querySelectorAll('details summary');
+                        
                         summaries.forEach(el => {{
-                            if (el.innerText.includes('{escaped_title}')) {{
-                                el.style.backgroundColor = '{bg}';
-                                el.style.border = '1px solid {border}';
-                                el.style.borderRadius = '8px';
-                                el.style.color = '#000000';
-                                el.style.fontWeight = 'bold';
+                            const text = el.innerText.trim();
+                            for (const [title, colors] of Object.entries(colorMap)) {{
+                                if (text.includes(title)) {{
+                                    el.style.setProperty('background-color', colors[0], 'important');
+                                    el.style.setProperty('border', '1px solid ' + colors[1], 'important');
+                                    el.style.setProperty('border-radius', '8px', 'important');
+                                    el.style.setProperty('color', '#000000', 'important');
+                                    el.style.setProperty('font-weight', 'bold', 'important');
+                                }}
                             }}
                         }});
-                    }} catch(e) {{ console.error(e); }}
-                    """
-                js_script += "</script>"
+                    }}
+
+                    // Mehrmaliges Ausführen stellt sicher, dass es nach dem DOM-Rerender greift
+                    setTimeout(applyExpanderColors, 50);
+                    setTimeout(applyExpanderColors, 300);
+                    setTimeout(applyExpanderColors, 800);
+                </script>
+                """
                 components.html(js_script, height=0, width=0)
 
             elif player_data:
